@@ -5,10 +5,15 @@ part PaperDeco {
         //  Their pastels are named once, in paper_pastels.plm (a colour `let` cannot vary inside a `repeat`, so the pick is written where it is used).
         repeat ppi in 0..7 {
             let ppo = pick(ppi, dk0, dc0, ds0, dl0, dm0, dz0, do0)
-            let ppl = pick(ppi, dk.ex - dk.ew / 2, dc.ex - dc.ew / 2, ds.ex - ds.ew / 2, dl.ex - dl.ew / 2, dm.ex - dm.ew / 2, dz.fl, do.ix - do.iw / 2)
-            let ppr = pick(ppi, dk.ex + dk.ew / 2, dc.ex + dc.ew / 2, ds.ex + ds.ew / 2, dl.ex + dl.ew / 2, dm.ex + dm.ew / 2, dz.fr, do.ix + do.iw / 2)
-            let ppt = pick(ppi, dk.ey - dk.eh / 2, dc.ey - dc.eh / 2, ds.ey - ds.eh / 2, dl.ey - dl.eh / 2, dm.ey - dm.eh / 2, dz.ft, do.ey - do.eh / 2)
+            let ppl0 = pick(ppi, dk.ex - dk.ew / 2, dc.ex - dc.ew / 2, ds.ex - ds.ew / 2, dl.ex - dl.ew / 2, dm.ex - dm.ew / 2, dz.fl, do.ix - do.iw / 2)
+            let ppr0 = pick(ppi, dk.ex + dk.ew / 2, dc.ex + dc.ew / 2, ds.ex + ds.ew / 2, dl.ex + dl.ew / 2, dm.ex + dm.ew / 2, dz.fr, do.ix + do.iw / 2)
+            let ppt0 = pick(ppi, dk.ey - dk.eh / 2, dc.ey - dc.eh / 2, ds.ey - ds.eh / 2, dl.ey - dl.eh / 2, dm.ey - dm.eh / 2, dz.ft, do.ey - do.eh / 2)
             let ppb = min(pick(ppi, dk.ey + dk.eh / 2, dc.ey + dc.eh / 2, ds.ey + ds.eh / 2, dl.ey + dl.eh / 2, dm.ey + dm.eh / 2, dz.fb, do.ey + do.eh / 2), vb - lf.t - 1)
+            //  A drawer's glass reaches into what it is joined to (the strip's middle, the frame, the bar) so that they melt; the paper marks
+            //  stop at the strip's right edge, inside the frame and under the bar, so the tab never runs over the strip's window title.
+            let ppl = max(ppl0, lf.w * lm)
+            let ppr = min(ppr0, screen.width - lf.t * lm)
+            let ppt = max(ppt0, mix(bar.y + bar.h / 2, lf.t, lm))
             let ppw = ppr - ppl
             let ppcx = (ppl + ppr) / 2
             let pph = ppb - ppt

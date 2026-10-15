@@ -39,6 +39,10 @@ fn shade(s: Shader) -> vec4<f32> {
         if (rrect(s.pos, c, h, s.a.w) < 0.0) {
             return vec4<f32>(0.0, 0.0, 0.0, 0.0);
         }
+        // Only below and to the right, like light from the top left: nothing left of the drawer or above it (on the left it is joined to the strip).
+        if (s.pos.x < s.a.z + s.b.x || s.pos.y < s.a.z + s.b.y) {
+            return vec4<f32>(0.0, 0.0, 0.0, 0.0);
+        }
         let d = rrect(s.pos, c + vec2<f32>(s.b.x, s.b.y), h, s.a.w);
         let fall = clamp(1.0 - max(d, 0.0) / max(s.b.z, 1.0), 0.0, 1.0);
         let dens = fall * fall * s.a.x;
