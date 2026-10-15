@@ -4,7 +4,7 @@ part BarIcons {
     //  does. An effect cannot sit inside another effect's group, hence outside. The click areas and rules
     //  stay in the bar group above.
     group {
-        glow: 2.4 * bu, 110%, deep
+        glow: 2.4 * bu, 110% * (1 - paper_k), deep
         row tray_bar_row {
             at: floor(tr.x - ((if(bs.tray > 0.02, bartrays.count, 0) + if(rec_on, 1, 0) + if(priv_mic, 1, 0) + if(priv_cam, 1, 0) + if(priv_scr and not rec_on, 1, 0)) * 24 - 6) * bu / 2 + 0.5), floor(bar.y - 9 * bu + 0.5)
             gap: floor(6 * bu + 0.5)

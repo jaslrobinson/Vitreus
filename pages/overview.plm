@@ -95,6 +95,15 @@ part Overview {
                 show: uwu_k > 0.004
                 box { at: ovc.x, ovc.top + 104 * ovu; size: 290 * ovu, 208 * ovu; corner: 18 * ovu * (1 - 0.73 * cy_k) }
             }
+            //  The Paper's cream over it (see bar_glass.plm).
+            body {
+                color: tint
+                rim: 0%
+                border: 1.2 * u * paper_k, mix(tint, ink, 0.25)
+                opacity: paper_k
+                show: paper_k > 0.004
+                box { at: ovc.x, ovc.top + 104 * ovu; size: 290 * ovu, 208 * ovu; corner: 18 * ovu * (1 - 0.73 * cy_k) }
+            }
             //  The Cyber's HUD over each card, as on its drawers (bar_glass.plm): a neon hairline outline and bright corner brackets, outside the glass.
             group {
                 show: cy_k > 0.01

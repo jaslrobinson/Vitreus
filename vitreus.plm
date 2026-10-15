@@ -412,7 +412,7 @@ scene Vitreus {
     //  Glass switched off (`glass_obs`): the same bar and drawers, but a flat, solid obsidian instead of glass. `obs` is 0 glass, 1 obsidian, and travels between them.
     fact glass_obs = false
     prop obs = 0 ~calm
-    follow obs = if(glass_obs or cas or uwu or milk or proxy_on, 1, 0)
+    follow obs = if(glass_obs or cas or uwu or milk or proxy_on or paper_on, 1, 0)
     //  The Cassette theme (Settings > Theme): the same flat body as obsidian, but in the palette's own plastic (`obsidian` below stops being darkened), with a hard
     //  edge, a lit lip, a seam, a four-colour stripe across each drawer's head and a hard shadow. `cas_k` travels between glass and plastic; the drawers' liquid
     //  (necks, drips, the jelly) is switched off with it and their corners are cut square (`rc`, `bk`).
@@ -429,7 +429,7 @@ scene Vitreus {
     fact milk = false
     prop milk_k = 0 ~calm
     follow milk_k = if(milk, 1, 0)
-    let pk = max(max(max(cas_k, uwu_k), milk_k), px_k)
+    let pk = max(max(max(cas_k, uwu_k), milk_k), max(px_k, paper_k))
     //  The Cyber theme: a neon HUD. The glass stays glass (the palette makes it near-black); on top of it each drawer gets a hairline neon outline, corner brackets and
     //  scan ticks (see bar_glass.plm). `cy_k` travels between glass and Cyber. `deep` is its second neon.
     fact cyber_on = false
@@ -440,6 +440,11 @@ scene Vitreus {
     fact proxy_on = false
     prop px_k = 0 ~calm
     follow px_k = if(proxy_on, 1, 0)
+    //  The Paper theme: dreamy e-ink. The plastic body (`pk`) in cream with a black hairline, the liquid left on (round corners, necks, jelly), a pastel
+    //  tab on each drawer, still paper grain and a dithered shadow (paper_deco.plm, paper.wgsl). `paper_k` travels between the others and Paper.
+    fact paper_on = false
+    prop paper_k = 0 ~calm
+    follow paper_k = if(paper_on, 1, 0)
     //  How square the corners are: Retro's plastic and Cyber's HUD both take the drawers' rounding down by the same 73 % (`corner: R * (1 - 0.73 * sq)`).
     let sq = max(max(cas_k, cy_k), px_k)
     event glass_obs_toggle ->
@@ -975,6 +980,7 @@ scene Vitreus {
 
     shader wave = file "wave.wgsl"
     shader pixelate = file "pixelate.wgsl"
+    shader paper = file "paper.wgsl"                    // the Paper theme's grain and dithered shadow
     shader matrix = file "matrix.wgsl"                  // the Cyber theme's digital rain
     //  The frosting behind the glass, as wide as the Glass page's blur slider says (`hy_blur`, 0 to 20; 0 is off): see blur.wgsl.
     blur = file "blur.wgsl" {

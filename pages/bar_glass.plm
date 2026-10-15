@@ -422,6 +422,24 @@ part BarGlass {
             include "bar_shapes.plm"
             include "bar_waves.plm"
         }
+        //  The Paper's cream over it: the palette's own paper colour, no lip, a black hairline at a quarter strength, no shadow (paper_deco.plm dithers one).
+        body {
+            color: tint
+            rim: 0%
+            border: 1.2 * u * paper_k, mix(tint, ink, 0.25)
+            opacity: paper_k
+            show: (paper_k > 0.004) and fw_act < 0.5
+            include "bar_shapes.plm"
+        }
+        body {
+            color: tint
+            rim: 0%
+            border: 1.2 * u * paper_k, mix(tint, ink, 0.25)
+            opacity: paper_k
+            show: (paper_k > 0.004) and fw_act > 0.5
+            include "bar_shapes.plm"
+            include "bar_waves.plm"
+        }
         //  The Cassette's detail on each drawer, only while it is plastic and the drawer is out: an accent-coloured tab at the top left (opposite the grips) (a console's button), a row of straight vertical grip slots in the bottom right
         //  corner (like the vents of a handheld: dark, with a lit edge) that run a few pixels past the drawer's bottom edge as if they wrapped round the base, and a screw in the bottom left.
         //  Inside the drawer they stay in its margin, so they never touch what it holds.
