@@ -1,6 +1,7 @@
 language 0.1
 
 import "palette-live.plm"
+import "paper_pastels.plm"
 import "desktopclock/clockface.plm"
 import "desktopclock/clockface_styled.plm"
 

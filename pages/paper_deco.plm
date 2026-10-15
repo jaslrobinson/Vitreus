@@ -1,0 +1,28 @@
+part PaperDeco {
+        //  The Paper theme's look on every drawer that is out: a pastel tab across its head (an index card's colour; the edge dithered away),
+        //  still paper grain over it, and a dithered e-ink shadow below and to the right in place of a soft one. The seven drawers, in order:
+        //  controls, calendar, settings, launcher, player and tray, desk (its glass, `dz.f*`, as Cyber's marks use), volume and notifications.
+        //  Their pastels are named once, in paper_pastels.plm (a colour `let` cannot vary inside a `repeat`, so the pick is written where it is used).
+        repeat ppi in 0..7 {
+            let ppo = pick(ppi, dk0, dc0, ds0, dl0, dm0, dz0, do0)
+            let ppl = pick(ppi, dk.ex - dk.ew / 2, dc.ex - dc.ew / 2, ds.ex - ds.ew / 2, dl.ex - dl.ew / 2, dm.ex - dm.ew / 2, dz.fl, do.ix - do.iw / 2)
+            let ppr = pick(ppi, dk.ex + dk.ew / 2, dc.ex + dc.ew / 2, ds.ex + ds.ew / 2, dl.ex + dl.ew / 2, dm.ex + dm.ew / 2, dz.fr, do.ix + do.iw / 2)
+            let ppt = pick(ppi, dk.ey - dk.eh / 2, dc.ey - dc.eh / 2, ds.ey - ds.eh / 2, dl.ey - dl.eh / 2, dm.ey - dm.eh / 2, dz.ft, do.ey - do.eh / 2)
+            let ppb = min(pick(ppi, dk.ey + dk.eh / 2, dc.ey + dc.eh / 2, ds.ey + ds.eh / 2, dl.ey + dl.eh / 2, dm.ey + dm.eh / 2, dz.fb, do.ey + do.eh / 2), vb - lf.t - 1)
+            let ppw = ppr - ppl
+            let ppcx = (ppl + ppr) / 2
+            let pph = ppb - ppt
+            let ppm = 18 * u                      // how far the shadow's box reaches past the drawer
+            group {
+                show: paper_k > 0.01 and ppo > 0.9
+                opacity: paper_k * clamp(ppo * 3 - 2, 0, 1)
+                shader paper { at: ppl - ppm, ppt - ppm; size: ppw + 2 * ppm, pph + 2 * ppm; values: 0.55, 1, ppm, 24 * u, 5 * u, 7 * u, 10 * u, 0.5; colors: ink, ink }
+                group {
+                    clip inset 0 box { at: ppcx, ppt + pph / 2; size: ppw, pph; corner: 24 * u }
+                    box { at: ppcx, ppt + 7 * u; size: ppw, 14 * u; color: if(ppi == 0, pp_lav, if(ppi == 1, pp_peach, if(ppi == 2, pp_butter, if(ppi == 3, pp_rose, if(ppi == 4, pp_mint, pp_sky))))) }
+                    shader paper { at: ppl, ppt + 14 * u; size: ppw, 6 * u; values: 0, 2; colors: if(ppi == 0, pp_lav, if(ppi == 1, pp_peach, if(ppi == 2, pp_butter, if(ppi == 3, pp_rose, if(ppi == 4, pp_mint, pp_sky))))), pp_sky }
+                    shader paper { at: ppl, ppt; size: ppw, pph; values: 0.05, 0; colors: ink, ink }
+                }
+            }
+        }
+}

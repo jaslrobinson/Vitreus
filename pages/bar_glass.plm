@@ -964,6 +964,7 @@ part BarGlass {
             text "SYS 5C90·E7F2" { at: cydzr - 16 * u, cydzb - 9 * u; anchor: right center; size: 10; weight: 500; color: minthi; family: "SpaceMono Nerd Font"; opacity: cy_on * if(mod(floor(time * 7 + 6), 3) == 2, 85%, 0) }
             box { at: cydzr - 10 * u, cydzb - 9 * u; size: 5 * u, 10 * u; color: minthi; opacity: cy_on * if(mod(time * 1.7, 1) < 0.5, 90%, 0) }
         }
+        include "paper_deco.plm"
         //  The UwU theme's graphics, on every drawer that is out (and round the screen, below): cat ears on its top corners, three twinkling stars along its
         //  top, two hearts that bob and a trail of paw prints in its bottom corners, and sparkles rising from the hearts. The ears are the only part outside
         //  the drawer; the rest sits in its margin and never touches what it holds. Each sticker has a grape outline, as the drawers have.

@@ -1,0 +1,10 @@
+//  The Paper theme's pastels, one per drawer (paper_deco.plm): named here, once. A part cannot hold a colour `let`, so they live in a library.
+
+library PaperPastels {
+    let pp_lav    = #d8d0f2          // controls
+    let pp_peach  = #f7d6c6          // calendar
+    let pp_mint   = #cde9da          // player and tray
+    let pp_sky    = #cfe0f3          // desk, volume and notifications
+    let pp_butter = #f4e7b8          // settings
+    let pp_rose   = #f2cfdc          // launcher
+}
