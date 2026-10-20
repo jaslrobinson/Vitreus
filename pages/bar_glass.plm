@@ -436,7 +436,25 @@ part BarGlass {
             rim: 0%
             border: 1.2 * u * paper_k, mix(tint, ink, 0.25)
             opacity: paper_k
-            show: (paper_k > 0.004) and fw_act > 0.5
+            show: (paper_k > 0.004) and fw_act > 0.5 and fw_act < 1.5
+            include "bar_shapes.plm"
+            include "bar_waves_12.plm"
+        }
+        body {
+            color: tint
+            rim: 0%
+            border: 1.2 * u * paper_k, mix(tint, ink, 0.25)
+            opacity: paper_k
+            show: (paper_k > 0.004) and fw_act > 1.5 and fw_act < 2.5
+            include "bar_shapes.plm"
+            include "bar_waves_24.plm"
+        }
+        body {
+            color: tint
+            rim: 0%
+            border: 1.2 * u * paper_k, mix(tint, ink, 0.25)
+            opacity: paper_k
+            show: (paper_k > 0.004) and fw_act > 2.5 and fw_act < 3.5
             include "bar_shapes.plm"
             include "bar_waves.plm"
         }
