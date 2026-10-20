@@ -1,0 +1,24 @@
+# Paper (local, not upstream): dreamy e-ink. Cream paper, pure-black ink, lavender for the accent and
+# peach for the second colour (`deep`). Its shape adds a pastel tab per drawer, still paper grain and a
+# Bayer-dithered shadow (pages/paper_deco.plm, paper.wgsl, paper_pastels.plm).
+name = "Paper"
+tagline = "Dreamy e-ink"
+base = "paper"
+font = "Literata"
+corner_rounding = 22
+
+[palette]
+ink    = "#000000"
+faint  = "#8a857a"
+mint   = "#9d8fd6"
+mintlo = "#8a7cc6"
+minthi = "#d9d0f5"
+onmint = "#000000"
+tint   = "#f4efe4"
+panel  = "#ebe5d6"
+deep   = "#f2b8a0"
+off    = "#d9d3c4"
+alert  = "#e07a7a"
+
+[card]
+colors = ["#f4efe4", "#ebe5d6", "#f2b8a0", "#9d8fd6", "#cde9da"]

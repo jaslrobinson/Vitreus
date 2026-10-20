@@ -17,7 +17,7 @@ def load(name):
 
 iris = load("iris.json")
 preset = iris.get("look", iris.get("preset"))      # an older file has only the look (Retro 8, UwU 9, Cyber 10)
-theme = iris.get("theme") or {8: "retro", 9: "uwu", 10: "cyber"}.get(preset, "glass")      # the theme's id: its file name in themes/ (or the person's folder)
+theme = iris.get("theme") or {8: "retro", 9: "uwu", 10: "cyber", 11: "milk", 12: "proxy", 13: "paper"}.get(preset, "glass")      # the theme's id: its file name in themes/ (or the person's folder)
 themes = {t.get("id"): t for t in load("themes.json").get("themes", []) if isinstance(t, dict)}     # bin/vitreus-themes makes it
 if themes and theme not in themes:
     theme = "glass"
