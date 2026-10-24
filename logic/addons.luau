@@ -97,7 +97,7 @@ return function()
             text.ax_title = a.name
             fact.ax_cur = i
             fact.ax_open = true
-            after(150, push_slot)         -- (as above: it is the logic that set them)
+            after(600, push_slot)         -- (as above: it is the logic that set them; `ax_grown` tells the add-on first, as the glass comes out)
         else
             winopen[a.id] = not winopen[a.id]
             say_one(a.sock, { "fact slot_open " .. tostring(winopen[a.id] == true) })
@@ -117,8 +117,9 @@ return function()
     on("ax_toggle", function()       -- from a key: the first add-on in the pill that has a drawer
         for i, a in ipairs(pins) do if a.drawer then pin_go(i - 1) return end end
     end)
-    -- (the rules that work out the content's place have run by then)
-    on("fact:ax_open", function(v) after(150, push_slot) end)
+    -- (the rules that work out the content's place have run by then: they run in the frame the panel opens)
+    on("fact:ax_open", function(v) after(v and 600 or 40, push_slot) end)       -- opening: `ax_grown` below is the cue; this is only a backstop
+    on("ax_grown", function(v) if tonumber(v) == 1 then push_slot() end end)
     on("fact:ax_hold", function(v) after(150, push_slot) end)
     on("fact:ax_cur", function(v) after(150, push_slot) end)
     on("fact:ax_sw", function(v) after(150, push_slot) end)

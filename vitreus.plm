@@ -4604,6 +4604,11 @@ scene Vitreus {
     fact ax_yoff = 0                                       // how far down the add-on scenes' surfaces start: the bar reserves its 62 at the top of the Island, and the compositor puts them in what is left (see `ax.yoff`)
     fact ax_rh = 0
     event ax_toggle ->
+    //  The add-on drawer's glass has grown a third of the way out (in the shell's own frames, however slow they are): logic/addons.luau tells the add-on then, so its
+    //  content comes out with the glass, never ahead of it over bare wallpaper.
+    event ax_grown ->
+    let ax_out = if(dax > 0.33, 1, 0)
+    on change ax_out { emit ax_grown(ax_out) }
     //  Where the add-on's content goes, as the drawer settles: kept up to date for the logic, which tells the add-on when the drawer opens.
     let lside = if(lp_k == 2, tm * (1 - bt), 0)
     let lbot = if(lp_k == 2, tm * bt, 0)                    // along the bottom (flipped, so the top on screen) the launcher comes out of the bottom notch, as Settings does otherwise
