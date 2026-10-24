@@ -42,6 +42,10 @@ part Keybinds {
                 on press kb_hit.$i { emit kb_select(i) }
             }
 
+            //  The wheel over the list: under Hyprland every bind is listed, more than the twelve rows, and the logic moves which twelve show.
+            zone box kb_wheel { at: spx + 219 * pu, kb.t1 + kb.h1 / 2; size: 438 * pu, kb.h1; active: set_pgy > 0.5 and not kb_cap; label: "Keybinds list" }
+            on scroll kb_wheel { emit kb_scroll(-wheel) }
+
             //  Card two: the editor.
             //  Obsidian: a solid plate a step lighter than the shell, with a small tight shadow, in place of the veil.
             body { color: mix(obsidian, ink, (veil) * 1.6); opacity: obs; shadow: 0, 2 * pu, 7 * pu, 40%, #000000; show: obs > 0.004; box { at: spx + 219 * pu, kb.t2 + kb.h2 / 2; size: 438 * pu, kb.h2; corner: 14 * pu } }
@@ -98,11 +102,11 @@ part Keybinds {
             }
             //  Every bind of the shell's back to the key it ships with (a second press confirms: it overwrites the keys that were changed).
             group {
-                show: kb_sel < 0
+                show: kb_sel < 0 and not wm_hypr               // (under Hyprland every bind is listed; the stock keys would land on the user's own)
                 box { from: kb.xr - 140 * pu, kb.t2 + 9 * pu; size: 140 * pu, 26 * pu; corner: 13 * pu; color: if(kb_arm, #ff6b6b, mint); opacity: 12% + 14% * kb_defaults_hit.hover + 14% * if(kb_arm, 1, 0) }
                 PPillOutline((kb.xr - 140 * pu) + 70 * pu, (kb.t2 + 9 * pu) + 13 * pu, 140 * pu, 26 * pu, 13 * pu, kb_defaults_hit.hover, clamp(3 * (12% + 14% * kb_defaults_hit.hover + 14% * if(kb_arm, 1, 0)), 0, 1), pu)
                 group { scale: rs; pivot: floor(kb.xr - 70 * pu + 0.5), floor(kb.t2 + 22 * pu + 0.5); text pick(if(kb_arm, 1, 0), "Reset to defaults", "Press again to reset") { at: floor(kb.xr - 70 * pu + 0.5), floor(kb.t2 + 22 * pu + 0.5); anchor: center; align: center; size: 15; weight: 600; color: if(kb_arm, #ff6b6b, mint); family: "Space Grotesk" } }
-                zone box kb_defaults_hit { from: kb.xr - 140 * pu, kb.t2 + 9 * pu; size: 140 * pu, 26 * pu; corner: 13 * pu; cursor: pointer; label: "Reset every keybind to the default"; active: kb_sel < 0 and set_pgy > 0.5 }
+                zone box kb_defaults_hit { from: kb.xr - 140 * pu, kb.t2 + 9 * pu; size: 140 * pu, 26 * pu; corner: 13 * pu; cursor: pointer; label: "Reset every keybind to the default"; active: kb_sel < 0 and set_pgy > 0.5 and not wm_hypr }
                 on press kb_defaults_hit { emit kb_defaults }
             }
             //  How the last save went (or why it did not).

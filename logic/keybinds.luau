@@ -14,9 +14,13 @@ return function()
     local DISP = { space = "Space", Return = "Enter", Tab = "Tab", Print = "Print", BackSpace = "Backspace", Delete = "Delete", Insert = "Insert",
         Home = "Home", End = "End", Prior = "PgUp", Next = "PgDn", Left = "←", Right = "→", Up = "↑", Down = "↓", comma = ",", period = ".",
         slash = "/", semicolon = ";", apostrophe = "'", bracketleft = "[", bracketright = "]", backslash = "\\", minus = "-", equal = "=", grave = "`" }
+    local RAWDISP = { ["mouse:272"] = "Mouse L", ["mouse:273"] = "Mouse R", ["mouse:274"] = "Mouse M", Caps_Lock = "Caps",
+        XF86AudioRaiseVolume = "Vol +", XF86AudioLowerVolume = "Vol −", XF86AudioMute = "Mute", XF86AudioMicMute = "Mic mute",
+        XF86AudioPlay = "Play", XF86AudioPause = "Pause", XF86AudioNext = "Next", XF86AudioPrev = "Prev",
+        XF86MonBrightnessUp = "Bright +", XF86MonBrightnessDown = "Bright −", XF86PowerOff = "Power" }
     local function disp_key(k)
         if #k == 1 then return k:upper() end
-        return DISP[k] or k
+        return DISP[k] or RAWDISP[k] or (k:gsub("^XF86", ""))
     end
     local MODS = { { 1, "Super" }, { 4, "Ctrl" }, { 8, "Alt" }, { 2, "Shift" } }   -- the order a combo is written in
     local MODBIT = { super = 1, mod = 1, mod4 = 1, win = 1, shift = 2, ctrl = 4, control = 4, alt = 8, mod1 = 8 }
@@ -75,7 +79,7 @@ return function()
     end
 
     -- A combo as the file writes it, to (modifier bits, key); nil when it does not make sense.
-    local function parse_combo(s)
+    local function parse_combo(s, loose)
         local parts = {}
         for p in (s or ""):gmatch("[^%+%s]+") do parts[#parts + 1] = p end
         if #parts == 0 then return nil end
@@ -87,7 +91,10 @@ return function()
         end
         local key = parts[#parts]
         local idx = KEYIDX[key:lower()]
-        if not idx then return nil end
+        if not idx then
+            if loose then return mask, key end
+            return nil
+        end
         return mask, KEYS[idx]
     end
     -- And back: Hyprland writes `SUPER + SHIFT + D`, pleamar-wm `Super+Shift+d`.
@@ -120,9 +127,18 @@ return function()
         return parts, w, off
     end
 
+    local WIN = 12                    -- rows the page has (pages/keybinds.plm `repeat i in 0..12`); the wheel moves the window (`kb_scroll`)
+    K.off = 0
     local function show()
         local model_rows = {}
-        for i, r in ipairs(K.rows) do
+        K.off = math.max(0, math.min(K.off, #K.rows - WIN))
+        if wm() == "hypr" then
+            local n = #K.rows
+            text.kb_where = n > WIN and string.format("%d–%d of %d%s", K.off + 1, math.min(K.off + WIN, n), n, K.off + WIN < n and "  ·  scroll for more" or "")
+                or string.format("%d binds  ·  hyprland.lua, hypr_vitreus.lua", n)
+        end
+        for i = 1, math.min(WIN, #K.rows - K.off) do
+            local r = K.rows[K.off + i]
             local parts, w, off = caps(r.mask, r.key)
             local row = { name = r.name, chg = r.changed }
             local names = { "a", "b", "c", "d" }
@@ -146,7 +162,110 @@ return function()
         fact.kb_has = K.key ~= ""
     end
 
+    -- ── Hyprland: every bind, from both files ─────────────────────────────────────────────────────────────────────────
+    -- hyprland.lua is read first, hypr_vitreus.lua (loaded after it, and unbinding first) second: a combo in both is live from the
+    -- second, so the first one's row is dropped. Each row keeps its file, its line and the first argument as written, so a change
+    -- rewrites only that, on that line. A row is named by the comment at the end of its line, else by what it runs.
+    local HFILES = { "hyprland.lua", "hypr_vitreus.lua" }
+    local function hfile(f) return home() .. "/.config/hypr/" .. f end
+    local DIRW = { l = "left", r = "right", u = "up", d = "down" }
+    local CMDNAMES = {
+        { "rofi_show%.sh drun", "App launcher (rofi)" }, { "rofi_show%.sh window", "Window switcher (rofi)" }, { "rofi_clipboard", "Clipboard (rofi)" },
+        { "swaync%-client %-t", "Notifications" }, { "playerctl play%-pause", "Play / pause" },
+        { "output%-volume raise", "Volume up" }, { "output%-volume lower", "Volume down" }, { "output%-volume mute", "Mute" },
+        { "input%-volume mute", "Mic mute" }, { "brightness raise", "Brightness up" }, { "brightness lower", "Brightness down" },
+        { "%-%-caps%-lock", "Caps Lock indicator" }, { "screenshot%.sh %-%-full %-%-edit", "Screenshot: screen, then edit" },
+        { "screenshot%.sh %-%-full", "Screenshot: screen" }, { "screenshot%.sh %-%-edit", "Screenshot: region, then edit" },
+        { "screenshot%.sh", "Screenshot: region" }, { "smart_lock%.sh", "Lock screen" }, { "captive%-portal", "Wi-Fi login page" },
+        { "exec_cmd%(terminal%)", "Terminal" }, { "firefox", "Firefox" },
+    }
+    local function title(w) return (w:gsub("^%l", string.upper)) end
+    local function hname(rest)
+        local c = rest:match("%)%s*%-%-%s*(.-)%s*$")
+        if c and c ~= "" then return title(c) end
+        local scene, cmd = rest:match('pleamar %-%-say (%S+) \\"(.-)\\"')
+        if scene and ACTS[scene .. " " .. cmd] then return ACTS[scene .. " " .. cmd] end
+        if rest:match("vitreus%-files") then return "Files" end
+        local v = rest:match("vitreus_open%.sh panel (%w+)")
+        if v then return "Vitreus: " .. title(v) end
+        v = rest:match("vitreus_open%.sh settings pg_(%w+)")
+        if v then return "Settings: " .. (({ keys = "Keybinds", disp = "Display", theme = "Theme" })[v] or v) end
+        v = rest:match('vitreus_open%.sh addon \\"(.-)\\"')
+        if v then return v end
+        v = rest:match("dsp%.focus%(%{%s*workspace%s*=%s*(%d+)")
+        if v then return "Go to workspace " .. v end
+        v = rest:match("window%.move%(%{%s*workspace%s*=%s*(%d+)")
+        if v then return "Move window to workspace " .. v end
+        v = rest:match('dsp%.focus%(%{%s*direction%s*=%s*"(%a+)"')
+        if v then return "Focus " .. (DIRW[v] or v) end
+        v = rest:match('window%.move%(%{%s*direction%s*=%s*"(%a+)"')
+        if v then return "Move window " .. (DIRW[v] or v) end
+        local x, y = rest:match("window%.resize%(%{%s*x%s*=%s*(%-?%d+),%s*y%s*=%s*(%-?%d+)")
+        if x then
+            x, y = tonumber(x), tonumber(y)
+            return "Resize window: " .. (x < 0 and "narrower" or x > 0 and "wider" or y < 0 and "shorter" or "taller")
+        end
+        if rest:match("window%.resize%(%)") then return "Resize window (drag)" end
+        if rest:match("window%.drag%(%)") then return "Move window (drag)" end
+        if rest:match("window%.close%(") then return "Close window" end
+        if rest:match("window%.float%(") then return "Float / tile window" end
+        for _, m in ipairs(CMDNAMES) do if rest:match(m[1]) then return m[2] end end
+        local ex = rest:match('exec_cmd%("(.-)"%)')
+        if ex then
+            ex = ex:gsub('PATH=\\"[^"]-\\"%s*', ""):gsub("^bash%s+", ""):gsub("%S*/", "")
+            return ex
+        end
+        if rest:match("function%(") then return "Lua action" end
+        return "Bind"
+    end
+    local function hbalanced(line)
+        local _, o = line:gsub("%(", "")
+        local _, c = line:gsub("%)", "")
+        return o == c
+    end
+    local function read_hypr(fn)
+        local rows, at = {}, {}
+        local function parse(fi, out)
+            local n = 0
+            for line in ((out or "") .. "\n"):gmatch("([^\n]*)\n") do
+                n = n + 1
+                local src, rest = line:match("^%s*hl%.bind%(([^,]-),(.*)$")
+                if src then
+                    local combo
+                    local inner = src:match('^%s*mainMod%s*%.%.%s*"(.*)"%s*$')
+                    if inner then combo = "SUPER" .. inner else combo = src:match('^%s*"(.*)"%s*$') end
+                    local mask, key = parse_combo(combo, true)
+                    if mask then
+                        local id = mask .. " " .. key:lower()
+                        if at[id] then rows[at[id]] = false end           -- the later file wins
+                        local act
+                        local scene, cmd = rest:match('pleamar %-%-say (%S+) \\"(.-)\\"')
+                        if scene then act = scene .. " " .. cmd elseif rest:match("vitreus%-files") then act = "vitreus-files" end
+                        local d = (fi == 2 and act and DEFAULTS.hypr[act]) and DEFAULTS.hypr[act][1] or nil
+                        rows[#rows + 1] = { order = #rows + 1, act = act, name = hname(rest), mask = mask, key = KEYIDX[key:lower()] and KEYS[KEYIDX[key:lower()]] or key,
+                            raw = key, src = src, combo = combo, file = HFILES[fi], line = n, one = hbalanced(line), def = d,
+                            changed = d ~= nil and (d[1] ~= mask or d[2] ~= (KEYIDX[key:lower()] and KEYS[KEYIDX[key:lower()]] or key)) }
+                        at[id] = #rows
+                    end
+                end
+            end
+        end
+        -- one after the other: two reads at once could come back in either order
+        run("cat", { hfile(HFILES[1]) }, function(out1)
+            parse(1, out1)
+            run("cat", { hfile(HFILES[2]) }, function(out2)
+                parse(2, out2)
+                local live = {}
+                for _, r in ipairs(rows) do if r then live[#live + 1] = r end end
+                K.rows = live
+                show()
+                if fn then fn() end
+            end)
+        end)
+    end
+
     local function read(fn)
+        if wm() == "hypr" then read_hypr(fn) return end
         run("cat", { path() }, function(out, code)
             local rows = {}
             local seen = {}
@@ -200,16 +319,18 @@ return function()
         fact.kb_cap = false
         fact.kb_dirty = false
         text.kb_msg = ""
-        text.kb_where = wm() == "hypr" and "Hyprland  ·  hypr_vitreus.lua" or (wm() == "niri" and "niri  ·  niri_vitreus.kdl" or "Pleamar-WM  ·  keys.conf")
+        text.kb_where = wm() == "hypr" and "Hyprland" or (wm() == "niri" and "niri  ·  niri_vitreus.kdl" or "Pleamar-WM  ·  keys.conf")
+        K.off = 0
         refresh()
     end)
 
     on("kb_select", function(i)
-        i = (tonumber(i) or 0) + 1
+        local w = (tonumber(i) or 0)
+        i = w + 1 + K.off
         local r = K.rows[i]
         if not r then return end
         K.sel, K.mask, K.key = i, r.mask, r.key
-        fact.kb_sel = i - 1
+        fact.kb_sel = w
         fact.kb_cap = false
         fact.kb_mod = r.mask
         text.kb_name = r.name
@@ -249,7 +370,66 @@ return function()
     end)
 
     -- Writes combo `mask`, `key` in place of what row `r` has, in the file; then reloads the window manager and reads the file again.
+    -- Hyprland: a change to one line of hyprland.lua or hypr_vitreus.lua. The file is copied first; after the reload, if Hyprland
+    -- reports a config error, the copy is put back and Hyprland reloaded again, so a bad write never leaves the desktop without its keys.
+    -- The line is read again before it is written: if it no longer holds what was listed, the list is read again instead.
+    local function hypr_write(r, script, msg_ok)
+        local f = hfile(r.file)
+        local bak = f .. ".vitreus-kb.bak"
+        local function finish(msg)
+            read(function()
+                K.sel = 0
+                fact.kb_sel = -1
+                fact.kb_dirty = false
+                text.kb_msg = msg
+            end)
+        end
+        run("sed", { "-n", r.line .. "p", f }, function(cur)
+            local src = (cur or ""):match("^%s*hl%.bind%(([^,]-),")
+            if src ~= r.src then finish("The file changed: the list is read again") return end
+            run("cp", { "-f", f, bak }, function(_, c0)
+                if c0 ~= 0 then text.kb_msg = "Could not back up " .. r.file return end
+                run("sed", { "-i", "--follow-symlinks", "-e", script, f }, function(_, c1)
+                    if c1 ~= 0 then text.kb_msg = "Could not write " .. r.file return end
+                    run("hyprctl", { "reload" }, function()
+                        run("hyprctl", { "configerrors" }, function(errs)
+                            if (errs or ""):match("%S") then
+                                run("cp", { "-f", bak, f }, function()
+                                    run("hyprctl", { "reload" }, function() finish("Hyprland did not take it: the file is as it was") end)
+                                end)
+                            else
+                                finish(msg_ok)
+                            end
+                        end)
+                    end)
+                end)
+            end)
+        end)
+    end
+
+    local function apply_hypr(r, mask, key)
+        if key == r.key then key = r.raw end                  -- the key as the file spells it (`left`, `Print`, `1`)
+        local combo = write_combo(mask, key)
+        if not combo:match("^[%w_ %+:]+$") then text.kb_msg = "That key cannot be written to the file" return end
+        for _, o in ipairs(K.rows) do
+            if o ~= r and o.mask == mask and o.key:lower() == tostring(key):lower() then text.kb_msg = "Already used by " .. o.name return end
+        end
+        -- as it was written: `mainMod .. " + …"` stays that way while Super is in it
+        local new
+        if r.src:match("^%s*mainMod") and bit32.band(mask, 1) ~= 0 then
+            new = 'mainMod .. "' .. combo:gsub("^SUPER", "") .. '"'
+        else
+            new = '"' .. combo .. '"'
+        end
+        local script = r.line .. 's|^\\([[:space:]]*hl\\.bind(\\)[^,]*,|\\1' .. new .. ',|'
+        if r.file == "hypr_vitreus.lua" then           -- its `hl.unbind` of the old combo goes with it
+            script = script .. '\n' .. 's|^hl\\.unbind("' .. r.combo .. '")$|hl.unbind("' .. combo .. '")|'
+        end
+        hypr_write(r, script, "Saved. Hyprland has the new key.")
+    end
+
     local function apply(r, mask, key)
+        if wm() == "hypr" then apply_hypr(r, mask, key) return end
         local old, new = r.text, write_combo(mask, key)
         if not new:match("^[%w_ %+]+$") or not old:match("^[%w_ %+]+$") then text.kb_msg = "That key cannot be written to the file" return end
         for i, o in ipairs(K.rows) do
@@ -289,6 +469,11 @@ return function()
     on("kb_delete", function()
         local r = K.rows[K.sel]
         if not r then return end
+        if wm() == "hypr" then
+            if not r.one then text.kb_msg = "This bind runs over several lines: take it out in " .. r.file return end
+            hypr_write(r, r.line .. "s|^|" .. REMOVED.hypr .. "|", "Removed “" .. r.name .. "”: its line is kept, commented, in " .. r.file)
+            return
+        end
         local old = r.text
         if not old:match("^[%w_ %+]+$") then text.kb_msg = "That key cannot be written to the file" return end
         local script
@@ -349,6 +534,7 @@ return function()
         return out
     end
     on("kb_defaults", function()
+        if wm() == "hypr" then text.kb_msg = "Every bind is listed here: change them one by one" return end
         if not fact.kb_arm then
             fact.kb_arm = true
             after(4000, function() fact.kb_arm = false end)
@@ -403,6 +589,14 @@ return function()
                 if w == "hypr" then run("hyprctl", { "reload" }, function() done() end) else done() end
             end)
         end)
+    end)
+
+    on("kb_scroll", function(n)
+        if K.sel ~= 0 then return end                         -- not while a row is being changed: its editor is open below
+        local before = K.off
+        K.off = K.off + math.floor((tonumber(n) or 0) * 3 + 0.5)
+        show()
+        if K.off ~= before then text.kb_msg = "" end
     end)
 
     on("kb_reset", function()

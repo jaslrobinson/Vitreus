@@ -538,6 +538,7 @@ scene Vitreus {
     event kb_cancel ->
     event kb_delete ->
     event kb_defaults ->
+    event kb_scroll ->              // the wheel over the Keybinds list (Hyprland lists every bind): notches, positive is down
     fact nt_to = 0                     // how far the notification list is scrolled (px)
     prop nt_s = 0 ~quick
     follow nt_s = nt_to
