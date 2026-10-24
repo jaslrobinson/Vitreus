@@ -30,7 +30,10 @@ part AddonDock {
             let axr.sy = if(i >= 2, 1, -1)
             let axr.zx = dax.ex + axr.sx * (dax.ew / 2 - 14 * cu)
             let axr.zy = dax.ey + axr.sy * (dax.eh / 2 - 14 * cu)
-            zone box ax_rz.$i { at: if(ax_rsz and ax_rk == i, screen.width / 2, mix(axr.zx, screen.width - axr.zx, rt)), if(ax_rsz and ax_rk == i, vc, mix(axr.zy, yo + vb - axr.zy, bt)); size: if(ax_rsz and ax_rk == i, screen.width, 28 * cu), if(ax_rsz and ax_rk == i, screen.height, 28 * cu); cursor: grab; active: dax0 > 0.9 and not ax_hold and (not ax_rsz or ax_rk == i); label: "Resize the add-on panel" }
+            //  A handle over the add-on pill (the panel grows out of it, so its corner on the pill's side sits on the icons) is off: it took the click meant for an
+            //  icon, and the panel stayed open and only had its size saved again instead of shutting.
+            let axr.on_pill = abs(mix(axr.zx, screen.width - axr.zx, rt) - adk.rcx) < adk.L / 2 + 14 * cu and abs(mix(axr.zy, yo + vb - axr.zy, bt) - adk.rcy) < cdk.t / 2 + 14 * cu
+            zone box ax_rz.$i { at: if(ax_rsz and ax_rk == i, screen.width / 2, mix(axr.zx, screen.width - axr.zx, rt)), if(ax_rsz and ax_rk == i, vc, mix(axr.zy, yo + vb - axr.zy, bt)); size: if(ax_rsz and ax_rk == i, screen.width, 28 * cu), if(ax_rsz and ax_rk == i, screen.height, 28 * cu); cursor: grab; active: dax0 > 0.9 and not ax_hold and (not ax_rsz or ax_rk == i) and not axr.on_pill; label: "Resize the add-on panel" }
             on press ax_rz.$i { ax_rsz = true; ax_rk = i; ax_bw = axs.w; ax_bh = axs.h; ax_fxd = axs.fx + ax_gx - axr.sx * axs.w / 2; ax_fyd = axs.fy + ax_gy - axr.sy * axs.h / 2 }
             on drag ax_rz.$i while ax_rsz and ax_rk == i {
                 ax_w = clamp(ax_bw + axr.sx * drag.dx * (1 - 2 * rt), 240, max(240, if(axr.sx > 0, cdk.xe - ax_fxd, ax_fxd - cdk.xs)))
