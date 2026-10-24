@@ -128,18 +128,26 @@ return function(set_panel)
     -- ── The power profile ────────────────────────────────────────────────────────────────────────────────────────
     -- power-profiles-daemon, through `powerprofilesctl`: 0 power saver, 1 balanced, 2 performance, -1 not there.
     local NAMES = { "power-saver", "balanced", "performance" }
-    local function prof_poll()
+    -- What the profile does on a machine where power-profiles-daemon only reaches the CPU's EPP hint: `vitreus-power-hook PROFILE`, when there is
+    -- one on the PATH (a script of the user's: power limits, turbo, fans). Run after every change here, and once with the profile as it is when
+    -- the shell starts, since such limits are not kept across a reboot while the daemon keeps the profile. No hook: nothing happens.
+    local function hook(name) run("vitreus-power-hook", { name }, function() end) end
+    local function prof_poll(then_fn)
         run("powerprofilesctl", { "get" }, function(out, code)
             if code ~= 0 then fact.pow_prof = -1; return end
             local now = (out or ""):gsub("%s+$", "")
             fact.pow_prof = -1
             for i, n in ipairs(NAMES) do if n == now then fact.pow_prof = i - 1 end end
+            if then_fn and fact.pow_prof >= 0 then then_fn(now) end
         end)
     end
     on("pow_prof_set", function(i)
         local name = NAMES[math.floor(i + 0.5) + 1]
         if not name then return end
-        run("powerprofilesctl", { "set", name }, function() prof_poll() end)
+        run("powerprofilesctl", { "set", name }, function(_, code)
+            if code == 0 then hook(name) end
+            prof_poll()
+        end)
     end)
     -- Only while the Controls panel (where its tile is) is open, at most every ten seconds: `powerprofilesctl` is a Python program,
     -- a seventh of a second each time it starts.
@@ -147,5 +155,5 @@ return function(set_panel)
     every(2000, function()
         if fact.panel == "controls" and os.time() - prof_at >= 10 then prof_at = os.time(); prof_poll() end
     end)
-    prof_poll()
+    prof_poll(hook)
 end
