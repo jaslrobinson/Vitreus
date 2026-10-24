@@ -2123,6 +2123,9 @@ function watch_urgent()
                 end
                 local addr = line:match("^urgent>>(%x+)")
                 if addr then window_urgent(addr) end
+                -- Hyprland read its config again (a save of hyprland.lua, Settings > Keybinds, `hyprctl reload`): the room the docks keep is
+                -- only ever sent, never written to vitreus_colors.lua, so the reload took it back; it is sent again.
+                if line:match("^configreloaded>>") then after(300, function() iris_fx.apply_hypr() end) end
                 -- the screen being shared or recorded through the portal (logic/privacy.luau has the rest of the privacy lights)
                 -- (Hyprland also says it for a photo of a patch of screen, "region": that is what the glass of this shell and any
                 -- screenshot tool take all the time, so only a whole monitor or window counts as sharing.)
