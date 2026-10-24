@@ -76,7 +76,7 @@ scene Vitreus {
     //  `cdk_on and ws_empty` held every loan on both copies, and the cursor stuck again.
     surface { size: full, full; anchor: bar_anchor; margin: 0; reserve: 62 while bar_anchor == top and not bar_frame and bar_size > 0.995; screens: each max 2; open: sb > 0.5 or bar_others; keyboard: on_demand while (panel != none and panel != volume and panel != notif) or wp_picker_open or ov_open or pk_open or desk_kb or (desk_open and ws_empty) or (((cdk_hot > 0.5 and cdk_ga > 0.5) or cdk_down > 0.5) and ws_empty) or dash_open or (axf_on and ax_open) }
     permissions { services: "files", "files.write", "auth", "clock", "clock.seconds", "thumbnails", "thumbnails.*", "audio", "audio.*", "window", "media", "media.*", "workspaces", "workspaces.focus", "brightness", "brightness.*", "battery", "network", "network.*", "bluetooth", "bluetooth.*", "apps", "tray", "tray.*", "notifications", "notifications.*"
-                  run: "git", "env", "fc-list", "fc-match", "pleamar", "fuser", "ps", "pleamar-update", "cava", "playerctl", "curl", "notify-send", "which", "pgrep", "pkill", "systemctl", "hyprctl", "socat", "printenv", "awww", "iris", "cp", "ls", "xdg-user-dir", "mv", "niri", "magick", "grim", "mkdir", "bluetoothctl", "nmcli", "busctl", "chmod", "wl-copy", "find", "vitreus-term", "vitreus-themes", "claude", "ollama", "codex", "pacman", "paru", "yay", "gemini", "cliphist", "stat", "file", "vitreus-clipimg", "grep", "pactl", "sed", "setsid", "powerprofilesctl", "loginctl", "vitreus-polkit-agent", "vitreus-sysmon", "vitreus-addons", "vitreus-keep", "vitreus-inhibit", "pw-play", "ffmpeg", "tesseract", "cat", "date", "udevadm", "test", "wl-paste", "ffprobe", "nordvpn", "vitreus-power-hook" }
+                  run: "git", "env", "fc-list", "fc-match", "pleamar", "fuser", "ps", "pleamar-update", "cava", "playerctl", "curl", "notify-send", "which", "pgrep", "pkill", "systemctl", "hyprctl", "socat", "printenv", "awww", "iris", "cp", "ls", "xdg-user-dir", "mv", "niri", "magick", "grim", "mkdir", "bluetoothctl", "nmcli", "busctl", "chmod", "wl-copy", "find", "vitreus-term", "vitreus-themes", "claude", "ollama", "codex", "pacman", "paru", "yay", "gemini", "cliphist", "stat", "file", "vitreus-clipimg", "grep", "pactl", "sed", "setsid", "powerprofilesctl", "loginctl", "vitreus-polkit-agent", "vitreus-sysmon", "vitreus-addons", "vitreus-keep", "vitreus-inhibit", "pw-play", "ffmpeg", "tesseract", "cat", "date", "udevadm", "test", "wl-paste", "ffprobe", "nordvpn", "vitreus-power-hook", "vitreus-charge-hook" }
 
     model wifi_nets max 16 { ssid: text; strength: number; secure: bool; known: bool; active: bool; band: number; bands: text; bandw: number; chan: number; rate: number; sec: text; busy: number }
     model bat_devs max 6 { name: text; level: number }
@@ -896,6 +896,8 @@ scene Vitreus {
     fact bt_list_h = 0
     text bat_state = ""             // what the laptop battery is doing and how long is left (logic/charger.luau)
     fact chg_now = false           // the charger is filling the battery (read by logic/charger.luau; the battery service is 20 s late)
+    fact chg_lim = -1              // where the battery stops charging, in %; -1 when it cannot be set here (logic/capture_power.luau)
+    text chg_note = ""             // where it starts charging again
     fact bat_n = 0                 // connected devices that report a charge (the Power window lists them)
     fact bt_set_h = 0
     fact bt_trusted = false
@@ -955,6 +957,7 @@ scene Vitreus {
     event rec_toggle ->            // the tile's button
     event pow_press ->             // a session button held for one second: 0 lock, 1 sleep, 2 log out, 3 restart, 4 power off
     event pow_prof_set ->          // 0, 1 or 2
+    event chg_lim_set ->           // the charge limit, in %
     fact ws.active = 1
     fact ws.special = false          // a special workspace (a scratchpad) is shown over them: the marks give way to one of its own
     fact ws.spk = 0                  // which one: 0 magic (or any other), 1 music, 2 private
@@ -4963,7 +4966,8 @@ scene Vitreus {
     //  The Power window lists the battery levels (this computer, then each connected device that says) between the session tiles and the profile.
     let bat_rows = (if(bat_here, 1, 0)) + bat_n
     let bat_h = if(bat_rows > 0, 20 + 56 * bat_rows, 0)
-    let sub_content = if(showing_sub == capview, if(rec_on, 142, 186), if(showing_sub == powview, 151 + bat_h, max(sub_min, if(showing_sub == cafview, 38, if(showing_sub == notifview, 60, if(showing_sub == btview, 40, 0)) + list_view_h))))
+    let chg_h = if(chg_lim >= 0, 62, 0)                  // the charge-limit row, under the power profile, when it can be set
+    let sub_content = if(showing_sub == capview, if(rec_on, 142, 186), if(showing_sub == powview, 151 + bat_h + chg_h, max(sub_min, if(showing_sub == cafview, 38, if(showing_sub == notifview, 60, if(showing_sub == btview, 40, 0)) + list_view_h))))
     let sub_bot = tiles_top + 54 + sub_content + 16
     //  The output list drops over what is under the volume row; with more than a couple of outputs
     //  it reaches past the drawer, so the drawer grows to hold it while it is open.

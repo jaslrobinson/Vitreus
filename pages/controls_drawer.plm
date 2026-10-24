@@ -1081,6 +1081,23 @@ part ControlsDrawer {
                 zone box pw_p2 { at: pcx + 92 * cu, px_top + (176 + bat_h) * cu; size: 90 * cu, 44 * cu; corner: 15 * cu; cursor: pointer; active: pow_prof >= 0 }
                 on press pw_p2 { emit pow_prof_set(2) }
             }
+            //  The charge limit: where the battery stops charging (it lasts longer kept below full). Four stops; the one the kernel has is lit, and
+            //  none is when it was set to something else elsewhere. Only where it can be set (`chg_lim` -1 otherwise, logic/capture_power.luau).
+            group {
+                show: chg_lim >= 0
+                text "CHARGE LIMIT" { at: floor(pcx - 138 * cu + 0.5), floor(px_top + (216 + bat_h) * cu + 0.5); anchor: left center; size: 11; weight: 700; color: faint; family: "Space Grotesk" }
+                text chg_note { at: floor(pcx + 138 * cu + 0.5), floor(px_top + (216 + bat_h) * cu + 0.5); anchor: right center; align: right; size: 11; weight: 600; width: 170 * cu; lines: 1; color: mint; family: "Space Grotesk" }
+                box { at: pcx, px_top + (244 + bat_h) * cu; size: 276 * cu, 36 * cu; corner: 14 * cu; color: ink; opacity: 8% }
+                repeat k in 0..4 {
+                    let chk.x = pcx + pick(k, -105, -35, 35, 105) * cu
+                    let chk.v = pick(k, 60, 80, 90, 100)
+                    let chk.on = if(chg_lim == chk.v, 1, 0)
+                    box { at: chk.x, px_top + (244 + bat_h) * cu; size: 64 * cu, 30 * cu; corner: 12 * cu; color: if(chk.on, mint, ink); opacity: if(chk.on, 26%, 9% * pw_c.$k.hover) }
+                    text pick(k, "60 %", "80 %", "90 %", "100 %") { at: floor(chk.x + 0.5), floor(px_top + (244 + bat_h) * cu + 0.5); anchor: center; align: center; size: 11.5; weight: 600; width: 60 * cu; lines: 1; color: mix(ink, mint, chk.on); opacity: 60% + 40% * max(chk.on, pw_c.$k.hover); family: "Space Grotesk" }
+                    zone box pw_c.$k { at: chk.x, px_top + (244 + bat_h) * cu; size: 66 * cu, 32 * cu; corner: 12 * cu; cursor: pointer; label: pick(k, "Stop charging at 60 %", "Stop charging at 80 %", "Stop charging at 90 %", "Charge to full"); active: chg_lim >= 0 }
+                    on press pw_c.$k { emit chg_lim_set(chk.v) }
+                }
+            }
         }
 
         //  The dropdown: a solid card that drops from the volume row over what is

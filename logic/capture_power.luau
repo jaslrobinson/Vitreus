@@ -156,4 +156,41 @@ return function(set_panel)
         if fact.panel == "controls" and os.time() - prof_at >= 10 then prof_at = os.time(); prof_poll() end
     end)
     prof_poll(hook)
+
+    -- ── The charge limit ─────────────────────────────────────────────────────────────────────────────────────────
+    -- Where the battery stops charging: the kernel's charge_control_end_threshold, read from the battery's folder, and written by
+    -- `vitreus-charge-hook STOP` (a script of the user's: it takes root, which this shell does not have). `chg_lim` is -1, and the row is not
+    -- shown, without either. `chg_note` says where charging starts again, when the kernel says (charge_control_start_threshold).
+    local chg = { dir = nil, hook = false }
+    local function chg_poll()
+        if not (chg.dir and chg.hook) then fact.chg_lim = -1; return end
+        run("cat", { chg.dir .. "/charge_control_end_threshold" }, function(out, code)
+            local v = code == 0 and tonumber(((out or ""):match("%d+"))) or nil
+            fact.chg_lim = v or -1
+            run("cat", { chg.dir .. "/charge_control_start_threshold" }, function(o2, c2)
+                local st = c2 == 0 and tonumber(((o2 or ""):match("%d+"))) or nil
+                text.chg_note = (v and v < 100 and st and st > 0) and ("charges again below " .. st .. " %") or (v == 100 and "charges to full" or "")
+            end)
+        end)
+    end
+    run("ls", { "/sys/class/power_supply" }, function(out, code)
+        if code ~= 0 then return end
+        for name in (out or ""):gmatch("%S+") do
+            if name:match("^BAT") then chg.dir = "/sys/class/power_supply/" .. name; break end
+        end
+        run("which", { "vitreus-charge-hook" }, function(_, c)
+            chg.hook = c == 0
+            chg_poll()
+        end)
+    end)
+    on("chg_lim_set", function(v)
+        v = math.floor((tonumber(v) or 0) + 0.5)
+        if not (chg.dir and chg.hook) or v < 10 or v > 100 then return end
+        fact.chg_lim = v                                    -- at once; read back from the kernel when the hook has run
+        run("vitreus-charge-hook", { tostring(v) }, function() chg_poll() end)
+    end)
+    local chg_at = 0
+    every(2000, function()
+        if fact.panel == "controls" and os.time() - chg_at >= 10 then chg_at = os.time(); chg_poll() end
+    end)
 end
