@@ -18,7 +18,7 @@ scene Files {
 
     permissions {
         services: "files", "files.write"
-        run: "find", "magick", "ffmpeg", "ffprobe", "identify", "pdftoppm", "stat", "du", "file", "rm", "rmdir", "hyprctl", "xdg-open", "gio", "cp", "mv", "mkdir", "df", "xdg-user-dir", "printenv", "pleamar", "wl-copy", "wl-paste", "fc-match", "vitreus-files", "cat", "head", "chmod", "ln", "touch", "bsdtar", "grep", "sha256sum", "lsblk", "udisksctl", "awww", "which", "readlink", "kitty", "alacritty", "foot", "wezterm", "konsole", "gnome-terminal", "xterm", "date", "sh"
+        run: "find", "magick", "ffmpeg", "ffprobe", "identify", "pdftoppm", "stat", "du", "file", "rm", "rmdir", "hyprctl", "xdg-open", "gio", "cp", "mv", "mkdir", "df", "xdg-user-dir", "printenv", "pleamar", "wl-copy", "wl-paste", "fc-match", "vitreus-files", "cat", "head", "chmod", "ln", "touch", "bsdtar", "grep", "sha256sum", "lsblk", "udisksctl", "awww", "which", "readlink", "kitty", "alacritty", "foot", "wezterm", "konsole", "gnome-terminal", "xterm", "date", "vitreus-sonda", "sh"
     }
 
     // ── what the logic says ──
@@ -82,7 +82,8 @@ scene Files {
     text sq = ""                      // what is typed in the search field
     fact searching = false           // the search field is open (it takes the place of the path)
     fact so.where = 0                // the search: 0 this folder, 1 the whole home folder
-    fact so.what = 0                 // 0 names, 1 what is written in the files
+    fact so.what = 0                 // 0 names, 1 what is written in the files, 2 what they are about (Sonda)
+    fact sonda.ok = false            // Sonda is installed (`sonda` and `vitreus-sonda` found): the "Meaning" chip shows
     fact so.kind = 0                 // 0 anything, 1 folders, 2 pictures, 3 documents, 4 sounds, 5 videos
     text locin = ""                  // what is typed where the path is
     fact loc.edit = false            // the path is being typed
@@ -1351,15 +1352,22 @@ scene Files {
     group {
         show: searching
         let sy = tb + 8 + tabsh + 5
-        text "Look in" { at: mx, sy + 13; anchor: left center; size: 11.5; weight: 600; color: faint; show: not slim; family: "Space Grotesk" }
-        Chip(mx + if(slim, 0, 52), sy, 70, "Names", if(so.what == 0, 1, 0), 10)
-        Chip(mx + if(slim, 0, 52) + 76, sy, 84, "Contents", if(so.what == 1, 1, 0), 11)
-        Chip(mx + if(slim, 0, 52) + 176, sy, 44, "All", if(so.kind == 0, 1, 0), 20)
-        Chip(mx + if(slim, 0, 52) + 226, sy, 64, "Folders", if(so.kind == 1, 1, 0), 21)
-        Chip(mx + if(slim, 0, 52) + 296, sy, 70, "Pictures", if(so.kind == 2, 1, 0), 22)
-        Chip(mx + if(slim, 0, 52) + 372, sy, 86, "Documents", if(so.kind == 3, 1, 0), 23)
-        Chip(mx + if(slim, 0, 52) + 464, sy, 62, "Sounds", if(so.kind == 4, 1, 0), 24)
-        Chip(mx + if(slim, 0, 52) + 532, sy, 62, "Videos", if(so.kind == 5, 1, 0), 25)
+        // With Sonda there is a third way to look, "Meaning" (what the files are about); in a narrow window "Look in" makes room for it.
+        let lk = if(slim or (sonda.ok and mw < 900), 0, 52)
+        let sk = if(sonda.ok, 84, 0)
+        text "Look in" { at: mx, sy + 13; anchor: left center; size: 11.5; weight: 600; color: faint; show: lk > 0; family: "Space Grotesk" }
+        Chip(mx + lk, sy, 70, "Names", if(so.what == 0, 1, 0), 10)
+        Chip(mx + lk + 76, sy, 84, "Contents", if(so.what == 1, 1, 0), 11)
+        group {
+            show: sonda.ok
+            Chip(mx + lk + 166, sy, 78, "Meaning", if(so.what == 2, 1, 0), 12)
+        }
+        Chip(mx + lk + sk + 176, sy, 44, "All", if(so.kind == 0, 1, 0), 20)
+        Chip(mx + lk + sk + 226, sy, 64, "Folders", if(so.kind == 1, 1, 0), 21)
+        Chip(mx + lk + sk + 296, sy, 70, "Pictures", if(so.kind == 2, 1, 0), 22)
+        Chip(mx + lk + sk + 372, sy, 86, "Documents", if(so.kind == 3, 1, 0), 23)
+        Chip(mx + lk + sk + 464, sy, 62, "Sounds", if(so.kind == 4, 1, 0), 24)
+        Chip(mx + lk + sk + 532, sy, 62, "Videos", if(so.kind == 5, 1, 0), 25)
         Chip(mx + mw - 160, sy, 90, "This folder", if(so.where == 0, 1, 0), 30)
         Chip(mx + mw - 64, sy, 64, "Home", if(so.where == 1, 1, 0), 31)
     }

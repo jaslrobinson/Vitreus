@@ -210,7 +210,7 @@ local function sorted(items)
     for _, e in ipairs(items) do
         if (s.hidden or not e.hidden or s.list) and (not q or e.name:lower():find(q, 1, true)) and kind_ok(e, kind) then out[#out + 1] = e end
     end
-    if s.list == "recent" then
+    if s.list == "recent" or (s.mode == "deep" and s.ranked) then
         table.sort(out, function(a, b) return (a.rank or 0) < (b.rank or 0) end)
         return out
     end
@@ -531,7 +531,7 @@ local function cell(i, e)
         at = i - 1, name = e.name, ik = e.ik, thumb = th or "", ["has.thumb"] = th ~= nil and th ~= false, picked = s.picked[e.path] == true, hidden = e.hidden,
         cut = s.clip ~= nil and s.clip.cut and s.clip.set[e.path] == true, cur = s.cursor == i,
         link = e.link == true, broken = e.broken == true, star = s.stars[e.path] == true,
-        size = e.dir and "" or size_text(e.size), date = e.deld or date_text(e.mtime), kind = kind_text(e),
+        size = e.dir and "" or size_text(e.size), date = e.deld or date_text(e.mtime), kind = e.hit and (kind_text(e):gsub(" %a+$", "") .. " · " .. e.hit) or kind_text(e),         -- (short, so the place fits: "PDF · page 7")
     }
 end
 
@@ -3036,6 +3036,43 @@ local function patterns_for(kind)
     return list
 end
 
+-- Meaning: Sonda (github.com/k4ditano/sonda, its daemon run by sonda.service) has read the home folder's pictures, PDFs, documents, sounds and videos and finds them by what
+-- they are about ("a receipt from the supermarket", "a sunset over the sea"). `vitreus-sonda` asks it once and prints its answer: the best first, a file once (its best place),
+-- the weak ones left out. Where in the file it was found (a PDF's page, a video's minute) goes after the file's kind.
+local SONDA_KINDS = { [2] = "image", [3] = "pdf,doc", [4] = "audio", [5] = "video" }
+local SONDA_FLOOR = 3.0          -- under this a find is a guess (the trial's real ones were 3.4 and up, its noise 2 to 3.8)
+local function sonda_where(h)
+    local loc = tonumber(h.loc)
+    if not loc then return nil end
+    if h.segment == "page" or h.segment == "page_image" then return string.format("page %d", math.floor(loc)) end
+    if h.segment == "audio" or h.segment == "frame" then return string.format("%d:%02d", math.floor(loc / 60), math.floor(loc % 60)) end
+    if h.segment == "lines" then return string.format("line %d", math.floor(loc)) end
+    return nil
+end
+function F.meaning_search(q, here, kind, mine, cb)
+    if kind == 1 then cb({}) return end          -- (Sonda reads files, not folders)
+    say("Asking Sonda…", 60)
+    run("vitreus-sonda", { q, here == s.home and "" or here, SONDA_KINDS[kind] or "" }, function(out)
+        if mine ~= search_seq then return end
+        local ok, v = pcall(json.decode, out or "")
+        if not ok or type(v) ~= "table" then cb({}, "Sonda gave no answer") return end
+        if not v.ok then cb({}, "Sonda: " .. tostring(v.error or "it failed")) return end
+        local paths, where, seen = {}, {}, {}
+        for _, h in ipairs(v.hits or {}) do
+            local p = h.path
+            if type(p) == "string" and not seen[p] and (tonumber(h.score) or 0) >= SONDA_FLOOR then
+                seen[p] = true
+                paths[#paths + 1] = p
+                where[p] = sonda_where(h)
+            end
+        end
+        F.list_paths(paths, function(found)
+            for _, e in ipairs(found) do e.hit = where[e.path] end
+            cb(found)
+        end)
+    end)
+end
+
 function F.stop_search()
     if s.search_proc then kill(s.search_proc); s.search_proc = nil end
     s.search_timer = nil
@@ -3074,6 +3111,19 @@ function F.run_search(again)
         if mine ~= search_seq or not running then return end
         if #items > 0 then publish(false) end
         after(450, tick_publish)
+    end
+    s.ranked = false
+    if s.so.what == 2 then
+        if q == "" then return end
+        F.meaning_search(q, here, kind, mine, function(found, err)
+            running = false
+            if mine ~= search_seq then return end
+            s.ranked = true
+            for _, e in ipairs(found) do items[#items + 1] = e end
+            publish(true)
+            if err then say(err, 6) end          -- (after the list, which would put the count over it)
+        end)
+        return
     end
     say("Searching…", 30)
     if s.so.what == 1 and q ~= "" then
@@ -3183,8 +3233,8 @@ function F.typed(v)
     F.show_rows()
 end
 on("text:sq", function(v)
-    if (s.so.where == 1 or s.so.what == 1) and s.mode then
-        -- (looking at contents, or all the home folder, is for Enter: the folder as it is stays on screen)
+    if (s.so.where == 1 or s.so.what >= 1) and s.mode then
+        -- (looking at contents or meaning, or all the home folder, is for Enter: the folder as it is stays on screen)
         s.qtext = v or ""
         return
     end
@@ -3193,20 +3243,20 @@ end)
 on("search_go", function() F.run_search() end)
 on("sopt", function(k)
     k = math.floor(tonumber(k) or 0)
-    if k == 10 or k == 11 then s.so.what = k - 10; fact["so.what"] = s.so.what
+    if k >= 10 and k <= 12 then s.so.what = k - 10; fact["so.what"] = s.so.what
     elseif k >= 20 and k <= 25 then s.so.kind = k - 20; fact["so.kind"] = s.so.kind
     elseif k == 30 or k == 31 then s.so.where = k - 30; fact["so.where"] = s.so.where end
     if s.mode == "deep" then
         F.run_search(true)
     elseif s.mode == "filter" then
-        if s.so.where == 1 or s.so.what == 1 then
+        if s.so.where == 1 or s.so.what >= 1 then
             -- the folder as it is until Enter
             s.items = F.visible()
             F.show_rows()
         else
             F.typed(s.qtext)
         end
-        if s.so.kind ~= 0 and s.qtext == "" and (s.so.where == 1 or s.so.what == 1) then F.run_search() end
+        if s.so.kind ~= 0 and s.qtext == "" and (s.so.where == 1 or s.so.what == 1) then F.run_search() end      -- (Meaning needs words)
     end
     after(60, function() focus("sq") end)
 end)
@@ -3788,5 +3838,8 @@ ask_obs()
 ask_look()
 ask_glass()
 after(4000, function() ask_obs(); ask_look(); ask_glass() end)
+
+-- ── Sonda: the "Meaning" chip shows only when it is installed ──
+run("which", { "sonda", "vitreus-sonda" }, function(_, code) fact["sonda.ok"] = code == 0 end)
 
 F.start()
