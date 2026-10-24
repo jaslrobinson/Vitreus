@@ -76,7 +76,7 @@ scene Vitreus {
     //  `cdk_on and ws_empty` held every loan on both copies, and the cursor stuck again.
     surface { size: full, full; anchor: bar_anchor; margin: 0; reserve: 62 while bar_anchor == top and not bar_frame and bar_size > 0.995; screens: each max 2; open: sb > 0.5 or bar_others; keyboard: on_demand while (panel != none and panel != volume and panel != notif) or wp_picker_open or ov_open or pk_open or desk_kb or (desk_open and ws_empty) or (((cdk_hot > 0.5 and cdk_ga > 0.5) or cdk_down > 0.5) and ws_empty) or dash_open or (axf_on and ax_open) }
     permissions { services: "files", "files.write", "auth", "clock", "clock.seconds", "thumbnails", "thumbnails.*", "audio", "audio.*", "window", "media", "media.*", "workspaces", "workspaces.focus", "brightness", "brightness.*", "battery", "network", "network.*", "bluetooth", "bluetooth.*", "apps", "tray", "tray.*", "notifications", "notifications.*"
-                  run: "git", "env", "fc-list", "fc-match", "pleamar", "fuser", "ps", "pleamar-update", "cava", "playerctl", "curl", "notify-send", "which", "pgrep", "pkill", "systemctl", "hyprctl", "socat", "printenv", "awww", "iris", "cp", "ls", "xdg-user-dir", "mv", "niri", "magick", "grim", "mkdir", "bluetoothctl", "nmcli", "busctl", "chmod", "wl-copy", "find", "vitreus-term", "vitreus-themes", "claude", "ollama", "codex", "pacman", "paru", "yay", "gemini", "cliphist", "stat", "file", "vitreus-clipimg", "grep", "pactl", "sed", "setsid", "powerprofilesctl", "loginctl", "vitreus-polkit-agent", "vitreus-sysmon", "vitreus-addons", "vitreus-keep", "vitreus-inhibit", "pw-play", "ffmpeg", "tesseract", "cat", "date", "udevadm", "test", "wl-paste", "ffprobe" }
+                  run: "git", "env", "fc-list", "fc-match", "pleamar", "fuser", "ps", "pleamar-update", "cava", "playerctl", "curl", "notify-send", "which", "pgrep", "pkill", "systemctl", "hyprctl", "socat", "printenv", "awww", "iris", "cp", "ls", "xdg-user-dir", "mv", "niri", "magick", "grim", "mkdir", "bluetoothctl", "nmcli", "busctl", "chmod", "wl-copy", "find", "vitreus-term", "vitreus-themes", "claude", "ollama", "codex", "pacman", "paru", "yay", "gemini", "cliphist", "stat", "file", "vitreus-clipimg", "grep", "pactl", "sed", "setsid", "powerprofilesctl", "loginctl", "vitreus-polkit-agent", "vitreus-sysmon", "vitreus-addons", "vitreus-keep", "vitreus-inhibit", "pw-play", "ffmpeg", "tesseract", "cat", "date", "udevadm", "test", "wl-paste", "ffprobe", "nordvpn" }
 
     model wifi_nets max 16 { ssid: text; strength: number; secure: bool; known: bool; active: bool; band: number; bands: text; bandw: number; chan: number; rate: number; sec: text; busy: number }
     model bat_devs max 6 { name: text; level: number }
@@ -2191,6 +2191,12 @@ scene Vitreus {
     fact vpn_on = false               // a profile is connected
     fact vpn_count = 0
     fact vpn_arm = -1                 // the row whose delete button has been pressed once
+    fact vpn_nord = false             // the NordVPN CLI is there: its card shows (NordVPN is its own daemon, not a NetworkManager profile)
+    fact vpn_nd_on = false            // NordVPN is connected
+    text vpn_nd_title = ""
+    text vpn_nd_sub = ""
+    text vpn_nd_note = ""             // its technology (NordLynx), in the card's corner
+    text vpn_nd_q = ""                // the field: a country or a city to connect to
     text vpn_title = "Not connected"
     text vpn_sub = ""
     text vpn_msg = ""
@@ -2210,6 +2216,9 @@ scene Vitreus {
     text vpno_pw = ""
     text vpno_ca = ""
     event vpn_refresh ->
+    event vpn_nd_quick ->             // NordVPN: connect to the fastest server
+    event vpn_nd_go ->                // NordVPN: connect to what the field says (the fastest server when it is empty)
+    event vpn_nd_down ->              // NordVPN: disconnect
     event vpn_toggle ->
     event vpn_down ->
     event vpn_arm_ask ->
@@ -5026,7 +5035,9 @@ scene Vitreus {
     let sm.dt = (8 - clamp(sm_tmp.count, 1, 8)) * 24
     let sm.h = 1536 - sm.ds - sm.dt
     //  The VPN page: the profiles card is as tall as its rows, and the add card as its form (WireGuard 5 rows, OpenVPN 4, a file 1 and a line).
-    let vpn.pb = 84
+    let vpn.nb = 84                                        // the NordVPN card, under the status card, while `nordvpn` is installed
+    let vpn.nh = 122
+    let vpn.pb = 84 + if(vpn_nord, vpn.nh + 12, 0)
     let vpn.pbh = 34 + max(1, vpn_count) * 32 + 6
     let vpn.ab = vpn.pb + vpn.pbh + 12
     let vpn.fh = if(vpn_mode == vpm_wg, 180, if(vpn_mode == vpm_ovpn, 144, 276))
