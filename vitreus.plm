@@ -4222,7 +4222,9 @@ scene Vitreus {
         group {
             pivot: 9 * bu, 9 * bu
             scale: 1 + 0.14 * touch.hover
-            image t.icon { at: 0, 0; size: floor(18 * bu + 0.5), floor(18 * bu + 0.5); opacity: (78% + 22% * touch.hover) * bs.tray }
+            image t.icon { at: 0, 0; size: floor(18 * bu + 0.5), floor(18 * bu + 0.5); opacity: (78% + 22% * touch.hover) * bs.tray * (1 - paper_k); show: paper_k < 0.999 }
+            //  Paper: the icon in e-ink, the ink's black (`tint` keeps its shape and replaces its colour): a pale icon vanished on the cream.
+            image t.icon { at: 0, 0; size: floor(18 * bu + 0.5), floor(18 * bu + 0.5); tint: ink; opacity: (85% + 15% * touch.hover) * bs.tray * paper_k; show: paper_k > 0.001 }
         }
         zone box touch { at: 9 * bu, 9 * bu; size: 24 * bu, 30 * bu; cursor: pointer; active: bs.tray > 0.5 }
         //  `panel_scr`: the menu opens on this monitor's copy (the logic opens the panel without saying which, so with the bar on
@@ -4277,8 +4279,11 @@ scene Vitreus {
             scale: 1 + 0.16 * touch.hover * (1 - adk_drag)
             //  Pencil: the icon twice, a hair off, jumping about eight times a second under the pointer (the clock only runs then: `need_clock`), the second fainter.
             let apf = floor(time * 8)
-            image t.icon { at: 0.7 * bu * sin(apf * 61 + t.index * 50) * touch.hover, 0.7 * bu * sin(apf * 67 + t.index * 30) * touch.hover; size: floor(24 * bu + 0.5), floor(24 * bu + 0.5); opacity: 88% + 12% * touch.hover }
-            image t.icon { at: 1.1 * bu + 0.7 * bu * sin(apf * 47 + t.index * 70) * touch.hover, -0.8 * bu + 0.7 * bu * sin(apf * 43 + t.index * 110) * touch.hover; size: floor(24 * bu + 0.5), floor(24 * bu + 0.5); opacity: 12% + 24% * touch.hover }
+            image t.icon { at: 0.7 * bu * sin(apf * 61 + t.index * 50) * touch.hover, 0.7 * bu * sin(apf * 67 + t.index * 30) * touch.hover; size: floor(24 * bu + 0.5), floor(24 * bu + 0.5); opacity: (88% + 12% * touch.hover) * (1 - paper_k); show: paper_k < 0.999 }
+            image t.icon { at: 1.1 * bu + 0.7 * bu * sin(apf * 47 + t.index * 70) * touch.hover, -0.8 * bu + 0.7 * bu * sin(apf * 43 + t.index * 110) * touch.hover; size: floor(24 * bu + 0.5), floor(24 * bu + 0.5); opacity: (12% + 24% * touch.hover) * (1 - paper_k); show: paper_k < 0.999 }
+            //  Paper: the add-on's icons in e-ink black, as the tray's (an add-on's own pale icon vanished on the cream)
+            image t.icon { at: 0.7 * bu * sin(apf * 61 + t.index * 50) * touch.hover, 0.7 * bu * sin(apf * 67 + t.index * 30) * touch.hover; size: floor(24 * bu + 0.5), floor(24 * bu + 0.5); tint: ink; opacity: (88% + 12% * touch.hover) * paper_k; show: paper_k > 0.001 }
+            image t.icon { at: 1.1 * bu + 0.7 * bu * sin(apf * 47 + t.index * 70) * touch.hover, -0.8 * bu + 0.7 * bu * sin(apf * 43 + t.index * 110) * touch.hover; size: floor(24 * bu + 0.5), floor(24 * bu + 0.5); tint: ink; opacity: (12% + 24% * touch.hover) * paper_k; show: paper_k > 0.001 }
         }
         zone box touch { at: 12 * bu, 12 * bu; size: 31 * bu, 33 * bu; cursor: pointer; active: adk.g > 0.6 and ((vert > 0.5) == (lm > 0.5)) }
         on enter touch { adk_hot = adk_hot + 1 }
