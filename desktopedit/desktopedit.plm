@@ -183,7 +183,7 @@ scene DesktopEdit {
             box { from: sx0, sy0; size: shw, shh; corner: 26 }
         }
         body {
-            color: mix(mix(tint, #000000, 0.7), ink, 0.3)
+            color: mix(tint, #000000, 0.7)
             rim: 0%
             opacity: 100% * ob
             shadow: 0, 10, 26, 45%, #000000

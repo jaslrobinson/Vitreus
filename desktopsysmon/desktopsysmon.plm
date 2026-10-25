@@ -215,7 +215,7 @@ scene DesktopSysmon {
         }
         //  Obsidian (Vitreus has its glass off): the same shapes as a flat, dark piece.
         body {
-            color: mix(mix(mix(tint, #000000, 0.7), ink, 0.3), off, pl)
+            color: mix(mix(tint, #000000, 0.7), off, pl)
             rim: 0%
             opacity: sh * ob
             shadow: 0, 6, 18, 45% * (1 - pl), #000000

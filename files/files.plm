@@ -1082,7 +1082,7 @@ scene Files {
             box { from: px, py; size: pw, ph; corner: rad * rr }
         }
         body {
-            color: mix(mix(mix(tint, #000000, 0.7), ink, 0.3), tint, pl)
+            color: mix(mix(tint, #000000, 0.55), tint, pl)
             rim: 0%
             border: (2 + 1.2 * uk) * pl, deep
             shadow: 0, 12, 30, 45%
@@ -1165,6 +1165,7 @@ scene Files {
     on focus { emit focused }
 
     // ── the glass ──
+    //  Glass off: the shell's own obsidian (the tint most of the way to black, as vitreus.plm and kt have it), with no ink in it, or a light ink turns it beige.
     body {
         color: tint
         glass: 100%
@@ -1181,7 +1182,7 @@ scene Files {
         box { from: 0, 0; size: W, H; corner: 22 * rr }
     }
     body {
-        color: mix(mix(mix(tint, #000000, 0.7), ink, 0.3), tint, pl)
+        color: mix(mix(tint, #000000, 0.7), tint, pl)
         rim: 0%
         border: (2 + 1.2 * uk) * pl, deep
         opacity: ob
