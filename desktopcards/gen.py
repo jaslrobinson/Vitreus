@@ -80,7 +80,7 @@ def glass(P):
             box {{ from: {P}_x, {P}_y; size: {P}_w, {P}_h; corner: 22 * (1 - 0.73 * cyk) }}
         }}
         body {{
-            color: mix(mix(tint, #000000, 0.7), ink, 0.3)
+            color: mix(tint, #000000, 0.7)
             rim: 0%
             opacity: 100% * ob * (1 - pl)
             shadow: 0, 8, 22, 45%, #000000

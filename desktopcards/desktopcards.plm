@@ -314,7 +314,7 @@ scene DesktopCards {
             box { at: cal_x + cal_w - 58, cal_y + 4; size: 70, 19; rotate: 3deg; stroke: 1; color: deep; opacity: 22% }
         }
         body {
-            color: mix(mix(tint, #000000, 0.7), ink, 0.3)
+            color: mix(tint, #000000, 0.7)
             rim: 0%
             opacity: 100% * ob * (1 - pl)
             shadow: 0, 8, 22, 45%, #000000
@@ -405,7 +405,7 @@ scene DesktopCards {
             box { at: rem_x + rem_w - 24, rem_y + -3; size: 64, 19; rotate: 8deg; stroke: 1; color: deep; opacity: 22% }
         }
         body {
-            color: mix(mix(tint, #000000, 0.7), ink, 0.3)
+            color: mix(tint, #000000, 0.7)
             rim: 0%
             opacity: 100% * ob * (1 - pl)
             shadow: 0, 8, 22, 45%, #000000
