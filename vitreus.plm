@@ -4255,8 +4255,11 @@ scene Vitreus {
             scale: 1 + 0.14 * touch.hover
             //  Pencil: the icon twice, a hair off, jumping about eight times a second under the pointer (the clock only runs then: `need_clock`), the second fainter.
             let apf = floor(time * 8)
-            image t.icon { at: 0.6 * bu * sin(apf * 61 + t.index * 50) * touch.hover, 0.6 * bu * sin(apf * 67 + t.index * 30) * touch.hover; size: floor(18 * bu + 0.5), floor(18 * bu + 0.5); opacity: (82% + 18% * touch.hover) * bs.ax }
-            image t.icon { at: 0.9 * bu + 0.6 * bu * sin(apf * 47 + t.index * 70) * touch.hover, -0.6 * bu + 0.6 * bu * sin(apf * 43 + t.index * 110) * touch.hover; size: floor(18 * bu + 0.5), floor(18 * bu + 0.5); opacity: (10% + 22% * touch.hover) * bs.ax }
+            image t.icon { at: 0.6 * bu * sin(apf * 61 + t.index * 50) * touch.hover, 0.6 * bu * sin(apf * 67 + t.index * 30) * touch.hover; size: floor(18 * bu + 0.5), floor(18 * bu + 0.5); opacity: (82% + 18% * touch.hover) * bs.ax * (1 - paper_k); show: paper_k < 0.999 }
+            image t.icon { at: 0.9 * bu + 0.6 * bu * sin(apf * 47 + t.index * 70) * touch.hover, -0.6 * bu + 0.6 * bu * sin(apf * 43 + t.index * 110) * touch.hover; size: floor(18 * bu + 0.5), floor(18 * bu + 0.5); opacity: (10% + 22% * touch.hover) * bs.ax * (1 - paper_k); show: paper_k < 0.999 }
+            //  Paper: the add-on's icons in e-ink black, as the tray's and the pill's
+            image t.icon { at: 0.6 * bu * sin(apf * 61 + t.index * 50) * touch.hover, 0.6 * bu * sin(apf * 67 + t.index * 30) * touch.hover; size: floor(18 * bu + 0.5), floor(18 * bu + 0.5); tint: ink; opacity: (82% + 18% * touch.hover) * bs.ax * paper_k; show: paper_k > 0.001 }
+            image t.icon { at: 0.9 * bu + 0.6 * bu * sin(apf * 47 + t.index * 70) * touch.hover, -0.6 * bu + 0.6 * bu * sin(apf * 43 + t.index * 110) * touch.hover; size: floor(18 * bu + 0.5), floor(18 * bu + 0.5); tint: ink; opacity: (10% + 22% * touch.hover) * bs.ax * paper_k; show: paper_k > 0.001 }
         }
         zone box touch { at: 9 * bu, 9 * bu; size: 24 * bu, 30 * bu; cursor: pointer; active: bs.ax > 0.5; label: t.name }
         on enter touch { adk_hot = adk_hot + 1 }       // (the pencil clock runs while an add-on's icon is under the pointer: `need_clock`)
