@@ -1,6 +1,6 @@
 language 0.1
 
-//  The wallpaper transition: a hexagon dissolve. This scene sits on the bottom layer, above awww's wallpaper and under every window,
+//  The wallpaper transition: a hexagon dissolve, or one of skwd-wall's (skwd.wgsl, `kind` 1..26). This scene sits on the bottom layer, above awww's wallpaper and under every window,
 //  and draws nothing until it is asked. Asked (see wptrans.luau), it makes the new wallpaper's picture at the screen's size, lets it
 //  appear through a honeycomb that opens in a wave from where it was picked, and, when the picture covers the screen, has awww switch to
 //  it at once and takes itself away. Nothing here takes a click: it has no zones.
@@ -13,14 +13,18 @@ scene Wptrans {
     }
 
     shader hexr = file "hexreveal.wgsl"
+    shader skwd = file "skwd.wgsl"
 
     text src = ""                       // the picture, made by the logic: a path, with a version on the end (it is made again each time)
+    text osrc = ""                      // the picture awww shows now, made the same way: skwd's read the old picture as well as the new
     text target = ""                    // the wallpaper that was picked
-    image nimg = from src, 1920, 1080
+    image nimg = from src, 0, 0         // made at the screen's size: its own pixels
+    image oimg = from osrc, 0, 0
 
     fact active = false                 // the dissolve is on
-    fact ox = 960                       // where the wave starts, in pixels from the top left
-    fact oy = 540
+    fact ox = -1                        // where the wave starts, in pixels from the top left; -1: the middle of the screen
+    fact oy = -1
+    fact kind = 0                       // 0 the hexagon dissolve, 1..26 one of skwd's (the logic chooses)
     fact hex_r = 56                     // the hexagon's radius, in pixels (the picker's tiles are bigger; this is a finer honeycomb)
     fact dur = 1.5                      // seconds
     fact wp_dec = 1                     // 1 where the screen encodes a shader's output again (Hyprland), 0 where it does not (pleamar-wm): see the shader
@@ -31,9 +35,23 @@ scene Wptrans {
     event go ->                         // everything is ready (src, target, ox, oy): begin
     on change active while active { t0 = time }
 
+    let hx = if(ox < 0, screen.width / 2, ox)
+    let hy = if(oy < 0, screen.height / 2, oy)
+
     group {
-        show: active
-        shader: hexr, prog, hex_r, ox, oy, 0.8, 0.45, wp_dec
-        image nimg { at: 0, 0; size: screen.width, screen.height }
+        show: active and kind == 0
+        shader: hexr, prog, hex_r, hx, hy, 0.8, 0.45, wp_dec
+        image nimg { at: 0, 0; size: screen.width, screen.height; fit: cover }
+    }
+    // skwd's: the old picture as it bends (opaque, over awww's same picture), and the new one over it, covering by how much of it shows
+    group {
+        show: active and kind > 0
+        shader: skwd, prog, kind, 0, wp_dec, hx / screen.width, hy / screen.height, 0, 0
+        image oimg { at: 0, 0; size: screen.width, screen.height; fit: cover }
+    }
+    group {
+        show: active and kind > 0
+        shader: skwd, prog, kind, 1, wp_dec, hx / screen.width, hy / screen.height, 0, 0
+        image nimg { at: 0, 0; size: screen.width, screen.height; fit: cover }
     }
 }

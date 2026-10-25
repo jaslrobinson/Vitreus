@@ -3966,7 +3966,8 @@ local function wp_hex(path, x, y, ok_fn, fail_fn)
     end)
 end
 
--- `how`: awww's transition flags. `hex`, `{ x =, y = }`: the dissolve from that point instead (the wallpaper picker's).
+-- `how`: awww's transition flags. `hex`, `{ x =, y = }`: wptrans's transition from that point instead (the wallpaper picker's); with
+-- neither, wptrans's from the middle of the screen (awww's fade if it is not running).
 -- `quiet`: a try, not a change: no video, no colours (Iris), and the wallpaper in use is not changed (the cards' live preview).
 local function wp_apply(path, how, started, hex, quiet)
     -- `src`: the picture awww is given: the wallpaper itself, or a video's poster (made first, once)
@@ -3982,6 +3983,8 @@ local function wp_apply(path, how, started, hex, quiet)
                     if started then started() end     -- `started`: awww has the picture, the change is under way
                 end)
             end
+            -- a change that does not ask for awww's own transition goes through wptrans too, from the middle of the screen (-1)
+            if not hex and not how and not quiet then hex = { x = -1, y = -1 } end
             if hex then
                 -- the video (or the stop of the one playing) waits for the end of the dissolve: see `check_wallpaper`
                 wp_hex(pic, hex.x, hex.y, function() wpv.next = { path }; if started then started() end end, by_awww)
