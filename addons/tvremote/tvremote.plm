@@ -5,7 +5,8 @@ import "addon-palette.plm"
 //  The scene only draws and reports presses (`tv_act(id)`); tvremote.luau runs tvremote.py, which speaks the TV's remote protocol.
 //  One text field at the top (typed through the shell, as the template does): it takes the TV's address, then the pairing code, then whatever you want typed into the TV.
 //
-//  Action ids (the logic maps them to keys): 1 up, 2 down, 3 left, 4 right, 5 OK, 10 back, 11 home, 12 settings, 13 vol -, 14 mute, 15 vol +, 16 play/pause, 17..20 apps, 30 power, 40 setup button.
+//  Action ids (the logic maps them to keys): 1 up, 2 down, 3 left, 4 right, 5 OK, 10 back, 11 home, 12 settings, 13 vol -, 14 mute, 15 vol +, 16 play/pause, 17..20 apps (an LG: inputs, apps, YouTube,
+//  Netflix), 30 power, 40 setup button.
 
 scene TvRemote {
     surface { size: full, full; anchor: top_left; margin: 0; level: top, overlay while slot_open; screens: each max 4 }
@@ -131,6 +132,21 @@ scene TvRemote {
     text menu_5 = ""
     event tv_menu ->
     event tv_forget ->
+    fact tv_kind = 0                                  // the TV in use: 0 a Google TV, 1 an LG (webOS): its app row reads Inputs, Apps, YouTube, Netflix
+    fact sheet_open = false                           // an LG's inputs or apps, as a list over the remote (eight a page; the ninth row turns the page)
+    fact sheet_cnt = 0
+    fact sheet_cur = -1                               // the row that is on now (the input, the app), or -1
+    text sheet_t = ""
+    text sheet_0 = ""
+    text sheet_1 = ""
+    text sheet_2 = ""
+    text sheet_3 = ""
+    text sheet_4 = ""
+    text sheet_5 = ""
+    text sheet_6 = ""
+    text sheet_7 = ""
+    text sheet_8 = ""
+    event tv_sheet ->
     measure nmw
 
     //  The field (typed through the shell).
@@ -147,8 +163,12 @@ scene TvRemote {
 
     prop rdy = 0 ~calm
     follow rdy = if(st == 1, 1, 0)
-    prop mo = 0 ~calm
-    follow mo = if(menu_open and st != 2, 1, 0)
+    prop mo = 0 ~calm                                 // something over the remote: the switcher (`mn`) or an LG's list (`so`)
+    follow mo = if((menu_open or sheet_open) and st != 2, 1, 0)
+    prop mn = 0 ~calm
+    follow mn = if(menu_open and st != 2, 1, 0)
+    prop so = 0 ~calm
+    follow so = if(sheet_open and st == 1, 1, 0)
     let live = if(st == 1 and shown > 0.5 and mo < 0.5, 1, 0)
 
     //  The remote is laid out at a design size (W0 x H0) and the whole of it is scaled to the panel, in both directions, centred: `sc`. The logic works out the same box for the field (tvremote.luau).
@@ -172,9 +192,9 @@ scene TvRemote {
             //  ── the name, what is playing, power ──
             ellipse { at: cx - nmw.width / 2 - 12 * u, top + 20 * u; radius: 3.5 * u; color: if(tv_on, mint, faint); opacity: shown * if(tv_on, 1, 0.45) }
             text tv_name { at: cx, top + 20 * u; anchor: center; align: center; size: 15 * u; weight: 700; width: W0 - 2 * m; lines: 1; color: ink; opacity: shown; family: "Space Grotesk"; measure: nmw }
-            path { at: cx + nmw.width / 2 + 13 * u, top + 20 * u; stroke: 1.6 * u; color: mix(faint, mint, mo + nm_z.hover); opacity: shown; move -4 * u, (-2 + 4 * mo) * u; line 0, (2 - 4 * mo) * u; line 4 * u, (-2 + 4 * mo) * u }
+            path { at: cx + nmw.width / 2 + 13 * u, top + 20 * u; stroke: 1.6 * u; color: mix(faint, mint, mn + nm_z.hover); opacity: shown; move -4 * u, (-2 + 4 * mn) * u; line 0, (2 - 4 * mn) * u; line 4 * u, (-2 + 4 * mn) * u }
             zone box nm_z { at: cx + 1 * u, top + 20 * u; size: nmw.width + 52 * u, 28 * u; cursor: pointer; label: "Switch TV"; active: shown > 0.5 and st != 2 }
-            on press nm_z { toggle menu_open }
+            on press nm_z { toggle menu_open; sheet_open = false }
             text sub { at: cx, top + 41 * u; anchor: center; align: center; size: 11 * u; weight: 600; width: W0 - 2 * m; lines: 1; color: faint; opacity: shown; family: "Space Grotesk" }
 
             //  ── the field: address, code, or text for the TV ──
@@ -216,7 +236,7 @@ scene TvRemote {
 
         //  ── the switcher: the saved TVs, one to add, and a cross to forget one ──
         group {
-            opacity: en2 * mo
+            opacity: en2 * mn
             move: 0, (1 - en2) * 12
             repeat k in 0..6 {
                 let ry = top + (118 + k * 40) * u
@@ -229,10 +249,31 @@ scene TvRemote {
                 text pick(k, menu_0, menu_1, menu_2, menu_3, menu_4, menu_5) { at: floor(left + m + 16 * u), floor(ry + 0.5); anchor: left center; size: 13.5 * u; weight: 600; width: W0 - 2 * m - 56 * u; lines: 1; color: if(cur > 0.5, mint, ink); opacity: shown * on; family: "Space Grotesk" }
                 let xr = if(tv_cnt > k, 1, 0)
                 text "×" { at: left + W0 - m - 16 * u, ry; anchor: center; size: 18 * u; weight: 600; color: mix(faint, alert, mx.$k.hover); opacity: shown * on * xr; family: "Space Grotesk" }
-                zone box mrow.$k { at: cx, ry; size: W0 - 2 * m, 32 * u; corner: 16 * u; cursor: pointer; label: pick(k, menu_0, menu_1, menu_2, menu_3, menu_4, menu_5); active: shown > 0.5 and mo > 0.5 and on > 0.5 }
-                zone ellipse mx.$k { at: left + W0 - m - 16 * u, ry; radius: 11 * u; cursor: pointer; label: "Forget this TV"; active: shown > 0.5 and mo > 0.5 and on > 0.5 and xr > 0.5 }
+                zone box mrow.$k { at: cx, ry; size: W0 - 2 * m, 32 * u; corner: 16 * u; cursor: pointer; label: pick(k, menu_0, menu_1, menu_2, menu_3, menu_4, menu_5); active: shown > 0.5 and mn > 0.5 and on > 0.5 }
+                zone ellipse mx.$k { at: left + W0 - m - 16 * u, ry; radius: 11 * u; cursor: pointer; label: "Forget this TV"; active: shown > 0.5 and mn > 0.5 and on > 0.5 and xr > 0.5 }
                 on press mrow.$k { emit tv_menu(k) }
                 on press mx.$k { emit tv_forget(k) }
+            }
+        }
+        //  ── a list from an LG: its inputs, or its apps, eight to a page (the ninth row turns the page) ──
+        group {
+            opacity: en2 * so
+            move: 0, (1 - en2) * 12
+            text sheet_t { at: cx, top + 112 * u; anchor: center; size: 12 * u; weight: 700; width: W0 - 2 * m - 40 * u; lines: 1; align: center; color: faint; opacity: shown; family: "Space Grotesk" }
+            text "×" { at: left + W0 - m - 12 * u, top + 112 * u; anchor: center; size: 18 * u; weight: 600; color: mix(faint, alert, sx.hover); opacity: shown; family: "Space Grotesk" }
+            zone ellipse sx { at: left + W0 - m - 12 * u, top + 112 * u; radius: 11 * u; cursor: pointer; label: "Close the list"; active: shown > 0.5 and so > 0.5 }
+            on press sx { sheet_open = false }
+            repeat k in 0..9 {
+                let ry = top + (140 + k * 32) * u
+                let on = if(sheet_cnt > k, 1, 0)
+                let cur = if(sheet_cur == k, 1, 0)
+                let hv = srow.$k.hover
+                let fl = if(cur > 0.5, 24%, 8% + 10% * hv + 10% * srow.$k.pressed)
+                box { at: cx, ry; size: W0 - 2 * m, 26 * u; corner: 13 * u; color: if(cur > 0.5, mint, ink); opacity: fl * shown * on }
+                TvPill(cx: cx, cy: ry, w: W0 - 2 * m, h: 26 * u, r: 13 * u, hot: hv, o: clamp(3 * fl, 0, 1) * shown * on, ku: u)
+                text pick(k, sheet_0, sheet_1, sheet_2, sheet_3, sheet_4, sheet_5, sheet_6, sheet_7, sheet_8) { at: floor(left + m + 16 * u), floor(ry + 0.5); anchor: left center; size: 13 * u; weight: 600; width: W0 - 2 * m - 32 * u; lines: 1; color: if(cur > 0.5, mint, ink); opacity: shown * on; family: "Space Grotesk" }
+                zone box srow.$k { at: cx, ry; size: W0 - 2 * m, 28 * u; corner: 14 * u; cursor: pointer; label: pick(k, sheet_0, sheet_1, sheet_2, sheet_3, sheet_4, sheet_5, sheet_6, sheet_7, sheet_8); active: shown > 0.5 and so > 0.5 and on > 0.5 }
+                on press srow.$k { emit tv_sheet(k) }
             }
         }
         //  ── the remote ──
@@ -306,7 +347,9 @@ scene TvRemote {
                 let fill = if(lit > 0.5, 24%, 8% + 10% * hv + 10% * pr)
                 box { at: bx, by; size: bw, 26 * u; corner: 13 * u; color: if(lit > 0.5, mint, ink); opacity: fill * shown }
                 TvPill(cx: bx, cy: by, w: bw, h: 26 * u, r: 13 * u, hot: hv, o: clamp(3 * fill, 0, 1) * shown, ku: u)
-                text pick(k, "Back", "Home", "Settings", "Vol -", "Mute", "Vol +", "Play", "YouTube", "Netflix", "Prime", "Disney+") { at: floor(bx + 0.5), floor(by + 0.5); anchor: center; size: 13.5 * u; weight: 600; width: bw - 8 * u; lines: 1; align: center; color: if(lit > 0.5, mint, ink); opacity: shown; family: "Space Grotesk" }
+                let lg = if(tv_kind == 1 and k >= 7, 1, 0)                     // an LG: the four app buttons are Inputs, Apps, YouTube, Netflix
+                text pick(k, "Back", "Home", "Settings", "Vol -", "Mute", "Vol +", "Play", "YouTube", "Netflix", "Prime", "Disney+") { at: floor(bx + 0.5), floor(by + 0.5); anchor: center; size: 13.5 * u; weight: 600; width: bw - 8 * u; lines: 1; align: center; color: if(lit > 0.5, mint, ink); opacity: shown * (1 - lg); family: "Space Grotesk" }
+                text pick(k, "", "", "", "", "", "", "", "Inputs", "Apps", "YouTube", "Netflix") { at: floor(bx + 0.5), floor(by + 0.5); anchor: center; size: 13.5 * u; weight: 600; width: bw - 8 * u; lines: 1; align: center; color: if(lit > 0.5, mint, ink); opacity: shown * lg; family: "Space Grotesk" }
                 zone box btn.$k { at: bx, by; size: bw + 2 * u, 28 * u; corner: 14 * u; cursor: pointer; label: pick(k, "Back", "Home", "Settings", "Volume down", "Mute", "Volume up", "Play or pause", "YouTube", "Netflix", "Prime Video", "Disney+"); active: live > 0.5 }
                 on press btn.$k { emit tv_act(act); rep_k = act; rep_go = 0 }
                 on release btn.$k { rep_go = 0 }
