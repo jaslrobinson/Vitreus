@@ -10,8 +10,10 @@ import math
 import os
 import subprocess
 import sys
+import struct
 import tempfile
 import time
+import wave
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 os.environ["VITREUS_EQ_NAME"] = "vitreus_eq_test"
@@ -40,6 +42,49 @@ def params():
     return {}
 
 
+def loudness(play_to, sink, tone):
+    """The RMS (dBFS) of `tone` played into `play_to`, as heard on `sink`'s monitor (a silent dummy output: nothing plays aloud)."""
+    rec = subprocess.Popen(["parec", "-d", sink + ".monitor", "--format=s16le", "--channels=1", "--rate=48000", "--raw"], stdout=subprocess.PIPE)
+    time.sleep(0.4)
+    subprocess.run(["pw-play", "--target", play_to, tone], capture_output=True)
+    time.sleep(0.3)
+    rec.terminate()
+    data = rec.stdout.read()
+    n = len(data) // 2
+    rms = math.sqrt(sum(x * x for x in struct.unpack("<%dh" % n, data[:n * 2])) / max(n, 1)) / 32768 if n else 0
+    return 20 * math.log10(rms) if rms > 0 else -120
+
+
+def check_boost_is_heard():
+    """The Boost raises what comes out: a -12 dBFS tone is 6 dB louder at +6 (the limiter must not take it back: its automatic
+    level regulation did, so +6 gave 3 dB and +12 nothing more)."""
+    tmp = tempfile.mkdtemp()
+    tone = tmp + "/tone.wav"
+    with wave.open(tone, "wb") as w:
+        w.setnchannels(2)
+        w.setsampwidth(2)
+        w.setframerate(48000)
+        w.writeframes(b"".join(struct.pack("<hh", v, v) for v in (int(0.25 * 32767 * math.sin(2 * math.pi * 1000 * i / 48000)) for i in range(48000 * 2))))
+    mod = subprocess.run(["pactl", "load-module", "module-null-sink", "sink_name=eqtest_null"], capture_output=True, text=True).stdout.strip()
+    try:
+        eq.gains = [0.0] * 10
+        eq.boost = 0.0
+        if not eq.start_chain("eqtest_null"):
+            fail("the filter did not start on the dummy output: %s" % eq.error)
+        eq.push_params()
+        time.sleep(0.5)
+        flat = loudness(eq.SINK, "eqtest_null", tone)
+        eq.boost = 6.0
+        eq.push_params()
+        time.sleep(0.5)
+        up = loudness(eq.SINK, "eqtest_null", tone)
+        eq.stop_chain(None)
+        if up - flat < 5.0:
+            fail("Boost +6 dB raised the tone by only %.1f dB (%.1f -> %.1f dBFS)" % (up - flat, flat, up))
+    finally:
+        subprocess.run(["pactl", "unload-module", mod], capture_output=True)
+
+
 def main():
     if not eq.limiter_available():
         fail("lsp-plugins-lv2 (limiter_mono) not found: install it to test the Boost")
@@ -64,6 +109,8 @@ def main():
     if not math.isclose(params().get("lim:g_in", 0), 1.0, rel_tol=1e-3):
         fail("Boost 0 did not reach the running filter: %s" % params().get("lim:g_in"))
     eq.stop_chain(None)
+    time.sleep(0.5)
+    check_boost_is_heard()
     if eq.default_sink() != before:
         fail("the test changed the default output")
     print("PASS")
