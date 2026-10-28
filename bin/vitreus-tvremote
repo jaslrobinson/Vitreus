@@ -335,6 +335,7 @@ class Remote:
 
 # ── LG webOS TVs: the second-screen API (requests as JSON over a WebSocket, 3001 with TLS or 3000) ───────────────────────────
 WEBOS_PORTS = tuple(int(p) for p in os.environ.get("VITREUS_TVREMOTE_WEBOS_PORTS", "3001,3000").split(","))     # wss, ws
+WEBOS_IDLE = float(os.environ.get("VITREUS_TVREMOTE_WEBOS_IDLE", "20"))      # seconds of silence before the TV is asked whether it is there
 WEBOS_PERMS = [                                     # aiowebostv's (handshake.py): the TV asks once, on its screen, for all of them
     "APP_TO_APP", "CLOSE", "CONTROL_AUDIO", "CONTROL_DISPLAY", "CONTROL_INPUT_JOYSTICK", "CONTROL_INPUT_MEDIA_PLAYBACK",
     "CONTROL_INPUT_MEDIA_RECORDING", "CONTROL_INPUT_TEXT", "CONTROL_INPUT_TV", "CONTROL_MOUSE_AND_KEYBOARD", "CONTROL_POWER",
@@ -557,7 +558,7 @@ class WebOS:
                 with os.fdopen(fd, "w") as f:
                     f.write(got)
                 emit(ev="state", stage="paired")
-            ws.sock.settimeout(20)
+            ws.sock.settimeout(WEBOS_IDLE)
             self.alive = True
             self.state = st
 
@@ -594,7 +595,7 @@ class WebOS:
                     if missed:
                         raise ConnectionError("the TV stopped answering")
                     missed = True
-                    ws.send(b"", 9)
+                    self.request("audio/getVolume")     # a request, not a ping: an LG's pong never comes back as a message to wake this loop
                     continue
                 if self.stale:
                     return

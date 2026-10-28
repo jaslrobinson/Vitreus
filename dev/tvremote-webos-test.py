@@ -113,8 +113,8 @@ def listen(port, tls_ctx=None):
 
 
 class Helper:
-    def __init__(self, data, ports):
-        env = dict(os.environ, VITREUS_TVREMOTE_WEBOS_PORTS=ports)
+    def __init__(self, data, ports, idle="20"):
+        env = dict(os.environ, VITREUS_TVREMOTE_WEBOS_PORTS=ports, VITREUS_TVREMOTE_WEBOS_IDLE=idle)
         self.p = subprocess.Popen([sys.executable, HELPER, data], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, env=env)
         self.q = queue.Queue()
         threading.Thread(target=lambda: [self.q.put(json.loads(l)) for l in self.p.stdout], daemon=True).start()
@@ -236,7 +236,21 @@ def main():
     if not regs or regs[-1]["payload"].get("client-key") != KEY:
         fail("reconnect did not register with the saved key")
     h.stop()
-    # 7. a TV with only the plain port (old firmware): falls back to it
+    # 7. a quiet TV stays connected: the stand-in, like an LG, never answers a ping, so the helper must check with a request
+    h = Helper(data, "%d,%d" % (WSS, WS), idle="0.5")
+    h.wait(lambda e: e.get("ev") == "hello", "hello")
+    h.send(cmd="connect", host="127.0.0.1", kind="webos")
+    h.wait(stage("ready"), "ready")
+    end = time.time() + 3
+    while time.time() < end:
+        try:
+            ev = h.q.get(timeout=0.2)
+        except queue.Empty:
+            continue
+        if ev.get("ev") == "state" and ev.get("stage") in ("error", "connecting"):
+            fail("a quiet TV was dropped: %s" % ev)
+    h.stop()
+    # 8. a TV with only the plain port (old firmware): falls back to it
     h = Helper(data, "%d,%d" % (WSS + 10, WS))
     h.wait(lambda e: e.get("ev") == "hello", "hello")
     h.send(cmd="connect", host="127.0.0.1", kind="webos")
