@@ -41,18 +41,32 @@ BANDS = [("bq_lowshelf", 32, 0.7), ("bq_peaking", 64, 1.41), ("bq_peaking", 125,
          ("bq_peaking", 500, 1.41), ("bq_peaking", 1000, 1.41), ("bq_peaking", 2000, 1.41), ("bq_peaking", 4000, 1.41),
          ("bq_peaking", 8000, 1.41), ("bq_highshelf", 16000, 0.7)]
 MAXDB = 12.0
-MAXBOOST = 12.0         # the Boost: up to 12 dB more than the output's own 100 %, into a limiter (LSP's, LV2) so the peaks do not clip
+MAXBOOST = 12.0         # the Boost: up to 12 dB more than the output's own 100 %
+# The Boost is EasyEffects' "boost" chain: zam-plugins' maximizer (its input gain is the Boost, a -1 dB ceiling and a 25 ms release: the
+# loudness without the crackle) and then LSP's limiter as EasyEffects sets it (Line Duck, x8 oversampling) for what still gets past. A
+# limiter alone, its gain driven by the Boost, crackled: a 5 ms release reshapes the bass inside one wave (9 % distortion at +12, 0 here).
+MAXIMIZER = "urn:zamaudio:ZaMaximX2"
 LIMITER = "http://lsp-plug.in/plugins/lv2/limiter_mono"
 CEILING = 10 ** (-1 / 20)                                       # the limiter's threshold: -1 dB
+LIM_CONTROLS = '"th" = %.5f "boost" = 0 "alr" = 0 "mode" = 11 "ovs" = 20 "dith" = 8 "lk" = 5 "at" = 5 "rt" = 5' % CEILING
+
+
+def lv2_dirs():
+    return os.environ.get("LV2_PATH", "").split(":") + [os.path.expanduser("~/.lv2"), "/usr/local/lib/lv2", "/usr/lib/lv2"]
+
+
+def maximizer_available():
+    """Is zam-plugins' ZaMaximX2 installed where PipeWire's LV2 host looks?"""
+    return any(d and os.path.isfile(os.path.join(d, "ZaMaximX2.lv2", "manifest.ttl")) for d in lv2_dirs())
 
 
 def limiter_available():
     """Is lsp-plugins' mono limiter installed where PipeWire's LV2 host looks (LV2_PATH, else the usual folders)?"""
-    dirs = os.environ.get("LV2_PATH", "").split(":") + [os.path.expanduser("~/.lv2"), "/usr/local/lib/lv2", "/usr/lib/lv2"]
-    return any(d and os.path.isfile(os.path.join(d, "lsp-plugins.lv2", "limiter_mono.ttl")) for d in dirs)
+    return any(d and os.path.isfile(os.path.join(d, "lsp-plugins.lv2", "limiter_mono.ttl")) for d in lv2_dirs())
 
 
 HAS_LIMITER = limiter_available()
+HAS_MAXIMIZER = HAS_LIMITER and maximizer_available()
 
 lock = threading.Lock()
 want_on = False
@@ -111,10 +125,15 @@ def write_conf(tgt):
         nodes.append('{ type = builtin name = eq%d label = %s control = { "Freq" = %d "Q" = %.2f "Gain" = %.2f } }' % (i, kind, hz, q, gains[i]))
         links.append('{ output = "%s:Out" input = "eq%d:In" }' % (prev, i))
         prev = "eq%d" % i
+    if HAS_MAXIMIZER:                                         # (a stereo plugin: each channel's copy of the graph uses its first pair)
+        nodes.append('{ type = lv2 name = maxi plugin = "%s" control = { "gain" = %.2f "thresh" = -1 "rel" = 25 } }' % (MAXIMIZER, boost))
+        links.append('{ output = "%s:Out" input = "maxi:lv2_audio_in_1" }' % prev)
+        prev = "maxi:lv2_audio_out_1"
     if HAS_LIMITER:
         # (`alr` off: LSP's automatic level regulation, on by default, takes the gain back down, so a Boost of +6 dB gave 3 and +12 no more)
-        nodes.append('{ type = lv2 name = lim plugin = "%s" control = { "g_in" = %.5f "th" = %.5f "boost" = 0 "alr" = 0 } }' % (LIMITER, boost_gain(), CEILING))
-        links.append('{ output = "%s:Out" input = "lim:in" }' % prev)
+        g_in = 1.0 if HAS_MAXIMIZER else boost_gain()
+        nodes.append('{ type = lv2 name = lim plugin = "%s" control = { "g_in" = %.5f %s } }' % (LIMITER, g_in, LIM_CONTROLS))
+        links.append('{ output = "%s" input = "lim:in" }' % (prev if ":" in prev else prev + ":Out"))
         prev = "lim"
     text = """context.properties = { log.level = 1 }
 context.spa-libs = { audio.convert.* = audioconvert/libspa-audioconvert  support.* = support/libspa-support }
@@ -174,7 +193,9 @@ def push_params():
         params = ['"channelmix.min-volume"', "1.0", '"channelmix.max-volume"', "1.0", '"pre:Mult"', "%.5f" % preamp(gains)]
         for i, g in enumerate(gains):
             params += ['"eq%d:Gain"' % i, "%.2f" % g]
-        if HAS_LIMITER:
+        if HAS_MAXIMIZER:
+            params += ['"maxi:gain"', "%.2f" % max(0.0, min(MAXBOOST, boost))]
+        elif HAS_LIMITER:
             params += ['"lim:g_in"', "%.5f" % boost_gain()]
         r = subprocess.run(["pw-cli", "s", str(node_id), "Props", "{ params = [ %s ] }" % " ".join(params)], capture_output=True, text=True, timeout=5)
         if r.returncode == 0 and "rror" not in r.stderr + r.stdout:
