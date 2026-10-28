@@ -94,9 +94,12 @@ scene Equalizer {
     fact bend = 1                                     // 1: the glass bends what is behind it; 0: it only blurs (cheaper): `pleamar --say equalizer "fact bend 0"`
     event eq_toggle ->
     event preset ->
-    //  The Boost: 0 to 12 dB past the output's own 100 %, into a limiter at the end of the filter. `boost_ok` is 0 when lsp-plugins (the limiter) is not installed.
+    //  The Boost: 0 to 12 dB past the output's own 100 %, into a maximizer and a limiter at the end of the filter. `boost_ok` is 0 while a plugin package
+    //  it needs is missing; `boost_need` names it on the row and `boost_hint` (shown on hover) says what to install.
     fact boost = 0
     fact boost_ok = 1
+    text boost_need = ""
+    text boost_hint = ""
     event boost ->
     event bset ->
     repeat i in 0..10 {
@@ -225,11 +228,16 @@ scene Equalizer {
             PSlider(x0: bsx, y: bty, w: bsw, lv: boost / 12, h: 12 * u, f: bhot * fr)
         }
         text number(boost, 0, " dB") { at: x0 + wd - 4 * u, bty; anchor: right center; size: 12 * u; weight: 700; color: mix(faint, mint, if(boost > 0.5, 1, 0)); opacity: shown * bok; family: "Space Grotesk" }
-        text "needs lsp-plugins" { at: x0 + wd - 4 * u, bty; anchor: right center; size: 10.5 * u; weight: 600; color: faint; opacity: shown * (1 - bok); family: "Space Grotesk" }
+        text boost_need { at: x0 + wd - 4 * u, bty; anchor: right center; size: 10.5 * u; weight: 600; color: faint; opacity: shown * (1 - bok); family: "Space Grotesk" }
         zone box bz { from: bsx - 8 * u, bty - 14 * u; size: bsw + 16 * u, 28 * u; cursor: ew_resize; label: "Boost (drag left or right)"; active: shown > 0.5 and bok > 0.5 }
         on press bz { emit boost(floor(clamp((pointer.x - bsx) / bsw, 0, 1) * 12 + 0.5)) }
         on drag bz { emit boost(floor(clamp((pointer.x - bsx) / bsw, 0, 1) * 12 + 0.5)) }
         on press right bz { emit boost(0) }
+        //  greyed out: the row says what is missing, and the hover says what to install
+        zone box bzn { from: x0, bty - 14 * u; size: wd, 28 * u; label: "Boost needs plugins"; active: shown > 0.5 and bok < 0.5 }
+        let bnh = if(bzn.hover > 0.5 and bok < 0.5, 1, 0)
+        box { at: x0 + wd / 2, bty + 32 * u; size: wd, 34 * u; corner: 9 * u; color: deep; opacity: 92% * bnh * shown }
+        text boost_hint { at: x0 + wd / 2, bty + 32 * u; anchor: center; align: center; size: 10.5 * u; weight: 600; width: wd - 20 * u; lines: 2; color: ink; opacity: bnh * shown; family: "Space Grotesk" }
     }
 
     group {

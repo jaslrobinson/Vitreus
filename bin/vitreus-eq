@@ -11,8 +11,8 @@ them the panel just has no spectrum).
 The panel talks to it in JSON lines: one command per line on stdin, one event per line on stdout.
   in : {"cmd":"apply","on":true,"gains":[0,0,0,0,0,0,0,0,0,0],"boost":0}   {"cmd":"spectrum","on":true}   {"cmd":"stop"}
        {"cmd":"claim"}   (make the EQ the default output again after the output was changed)
-  out: {"ev":"state","on":true,"active":true,"target":"alsa_output...","error":"","limiter":true}   (active: the EQ is the default output, not bypassed;
-       limiter: the Boost can be used, as lsp-plugins' limiter is there)
+  out: {"ev":"state","on":true,"active":true,"target":"alsa_output...","error":"","missing":[]}   (active: the EQ is the default output, not bypassed;
+       missing: the plugin packages the Boost still needs, "lsp-plugins" / "zam-plugins"; [] when it can be used)
        {"ev":"spec","b":[ten levels 0..1],"p":[their peaks]}   (only while the spectrum is on and something is playing)
 argv[1] is the add-on's data folder, where the generated chain.conf is kept.
 """
@@ -65,8 +65,13 @@ def limiter_available():
     return any(d and os.path.isfile(os.path.join(d, "lsp-plugins.lv2", "limiter_mono.ttl")) for d in lv2_dirs())
 
 
-HAS_LIMITER = limiter_available()
-HAS_MAXIMIZER = HAS_LIMITER and maximizer_available()
+def missing_plugins():
+    """The packages the Boost needs that are not installed. Looked at each time the filter is made, so installing them and switching the
+    EQ off and on is enough. With one missing the Boost is off and the filter is the plain EQ: no limiter-only stand-in (it crackled)."""
+    return [name for name, ok in (("lsp-plugins", limiter_available()), ("zam-plugins", maximizer_available())) if not ok]
+
+
+boost_stages = False    # the running filter has the maximizer and the limiter (set when it is made)
 
 lock = threading.Lock()
 want_on = False
@@ -106,18 +111,16 @@ def sink_exists(name):
 def preamp(gs):
     """Take off as much as the loudest boost adds, so a boost does not clip. With the limiter at the end there is no need: it
     catches the peaks, and the curve keeps the loudness it was set to."""
-    if HAS_LIMITER:
+    if boost_stages:
         return 1.0
     return 10 ** (-max(0.0, max(gs)) / 20)
-
-
-def boost_gain():
-    return 10 ** (max(0.0, min(MAXBOOST, boost)) / 20)
 
 
 # The filter's own output stream is never moved (`node.dont-move`): an effects app that takes every stream (EasyEffects does by default) would take it too
 # and send it on to the default output, which is this EQ: a loop, and silence.
 def write_conf(tgt):
+    global boost_stages
+    boost_stages = not missing_plugins()
     nodes = ['{ type = builtin name = pre label = linear control = { "Mult" = %.5f "Add" = 0.0 } }' % preamp(gains)]
     links = []
     prev = "pre"
@@ -125,15 +128,12 @@ def write_conf(tgt):
         nodes.append('{ type = builtin name = eq%d label = %s control = { "Freq" = %d "Q" = %.2f "Gain" = %.2f } }' % (i, kind, hz, q, gains[i]))
         links.append('{ output = "%s:Out" input = "eq%d:In" }' % (prev, i))
         prev = "eq%d" % i
-    if HAS_MAXIMIZER:                                         # (a stereo plugin: each channel's copy of the graph uses its first pair)
+    if boost_stages:                                          # (the maximizer is a stereo plugin: each channel's copy of the graph uses its first pair)
         nodes.append('{ type = lv2 name = maxi plugin = "%s" control = { "gain" = %.2f "thresh" = -1 "rel" = 25 } }' % (MAXIMIZER, boost))
         links.append('{ output = "%s:Out" input = "maxi:lv2_audio_in_1" }' % prev)
-        prev = "maxi:lv2_audio_out_1"
-    if HAS_LIMITER:
-        # (`alr` off: LSP's automatic level regulation, on by default, takes the gain back down, so a Boost of +6 dB gave 3 and +12 no more)
-        g_in = 1.0 if HAS_MAXIMIZER else boost_gain()
-        nodes.append('{ type = lv2 name = lim plugin = "%s" control = { "g_in" = %.5f %s } }' % (LIMITER, g_in, LIM_CONTROLS))
-        links.append('{ output = "%s" input = "lim:in" }' % (prev if ":" in prev else prev + ":Out"))
+        # (`alr` off: LSP's automatic level regulation, on by default, takes the gain back down)
+        nodes.append('{ type = lv2 name = lim plugin = "%s" control = { "g_in" = 1.0 %s } }' % (LIMITER, LIM_CONTROLS))
+        links.append('{ output = "maxi:lv2_audio_out_1" input = "lim:in" }')
         prev = "lim"
     text = """context.properties = { log.level = 1 }
 context.spa-libs = { audio.convert.* = audioconvert/libspa-audioconvert  support.* = support/libspa-support }
@@ -193,10 +193,8 @@ def push_params():
         params = ['"channelmix.min-volume"', "1.0", '"channelmix.max-volume"', "1.0", '"pre:Mult"', "%.5f" % preamp(gains)]
         for i, g in enumerate(gains):
             params += ['"eq%d:Gain"' % i, "%.2f" % g]
-        if HAS_MAXIMIZER:
+        if boost_stages:
             params += ['"maxi:gain"', "%.2f" % max(0.0, min(MAXBOOST, boost))]
-        elif HAS_LIMITER:
-            params += ['"lim:g_in"', "%.5f" % boost_gain()]
         r = subprocess.run(["pw-cli", "s", str(node_id), "Props", "{ params = [ %s ] }" % " ".join(params)], capture_output=True, text=True, timeout=5)
         if r.returncode == 0 and "rror" not in r.stderr + r.stdout:
             return True
@@ -282,7 +280,7 @@ def reconcile():
                 stop_chain(target)
             error = ""
         up = bool(want_on and chain is not None)
-        emit(on=up, active=bool(up and default_sink() == SINK), target=target if chain is not None else "", error=error, limiter=HAS_LIMITER)
+        emit(on=up, active=bool(up and default_sink() == SINK), target=target if chain is not None else "", error=error, missing=missing_plugins())
 
 
 # ── the volume ──
@@ -511,7 +509,7 @@ def main():
     threading.Thread(target=volume_loop, daemon=True).start()
     if np is not None:
         threading.Thread(target=spectrum_loop, daemon=True).start()
-    emit(on=False, active=False, target="", error="", limiter=HAS_LIMITER)
+    emit(on=False, active=False, target="", error="", missing=missing_plugins())
     for line in sys.stdin:
         try:
             m = json.loads(line)

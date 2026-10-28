@@ -89,7 +89,14 @@ local function on_line(line)
     target = type(ev.target) == "string" and ev.target or ""
     active = ev.active ~= false
     err = type(ev.error) == "string" and ev.error or ""
-    fact.boost_ok = ev.limiter == false and 0 or 1
+    -- the Boost needs two plugin packages (vitreus-eq says which are missing): the row says so, and its hover says how
+    local miss = type(ev.missing) == "table" and ev.missing or {}
+    local pkg = { ["lsp-plugins"] = "lsp-plugins-lv2", ["zam-plugins"] = "zam-plugins-lv2" }
+    local names = {}
+    for _, m in ipairs(miss) do names[#names + 1] = pkg[m] or m end
+    fact.boost_ok = #miss == 0 and 1 or 0
+    text.boost_need = #miss > 0 and ("needs " .. table.concat(miss, " + ")) or ""
+    text.boost_hint = #miss > 0 and ("Install " .. table.concat(names, " and ") .. " (the package names on Arch), then switch the EQ off and on.") or ""
     show()
 end
 

@@ -129,7 +129,24 @@ def check_boost_is_heard():
         subprocess.run(["pactl", "unload-module", mod], capture_output=True)
 
 
+def check_missing_plugins():
+    """With either package missing, the Boost is off: the filter is the plain EQ (no plugin stage, no limiter-only fallback,
+    which crackled) and the helper names what to install."""
+    real_lim, real_max = eq.limiter_available, eq.maximizer_available
+    try:
+        for lim, mx, want in ((False, True, ["lsp-plugins"]), (True, False, ["zam-plugins"]), (False, False, ["lsp-plugins", "zam-plugins"])):
+            eq.limiter_available, eq.maximizer_available = (lambda v=lim: v), (lambda v=mx: v)
+            if eq.missing_plugins() != want:
+                fail("missing_plugins() is %s, not %s" % (eq.missing_plugins(), want))
+            eq.write_conf("nowhere")
+            if "type = lv2" in open(eq.CONF).read():
+                fail("with %s missing the filter still has a plugin stage" % want)
+    finally:
+        eq.limiter_available, eq.maximizer_available = real_lim, real_max
+
+
 def main():
+    check_missing_plugins()
     if not eq.limiter_available():
         fail("lsp-plugins-lv2 (limiter_mono) not found: install it to test the Boost")
     target = eq.real_default() or eq.default_sink()
