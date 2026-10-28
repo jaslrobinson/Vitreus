@@ -101,6 +101,8 @@ def boost_gain():
     return 10 ** (max(0.0, min(MAXBOOST, boost)) / 20)
 
 
+# The filter's own output stream is never moved (`node.dont-move`): an effects app that takes every stream (EasyEffects does by default) would take it too
+# and send it on to the default output, which is this EQ: a loop, and silence.
 def write_conf(tgt):
     nodes = ['{ type = builtin name = pre label = linear control = { "Mult" = %.5f "Add" = 0.0 } }' % preamp(gains)]
     links = []
@@ -134,7 +136,7 @@ context.modules = [
       audio.channels = 2
       audio.position = [ FL FR ]
       capture.props = { node.name = "%s" media.class = Audio/Sink priority.session = 10 channelmix.min-volume = 1.0 channelmix.max-volume = 1.0 }
-      playback.props = { node.name = "%s_out" node.passive = true target.object = "%s" stream.dont-remix = true }
+      playback.props = { node.name = "%s_out" node.passive = true target.object = "%s" stream.dont-remix = true node.dont-move = true }
     } }
 ]
 """ % ("\n          ".join(nodes), " ".join(links), prev, "out" if prev == "lim" else "Out", SINK, SINK, tgt)
