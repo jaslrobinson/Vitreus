@@ -4,7 +4,7 @@ import "addon-pencil.plm"
 import "addon-theme.plm"                          // the theme's own pieces (PThumb: see STYLE.md, "Themes")
 
 //  Equalizer, in boiled pencil: ten bands you drag, five presets and one switch, in a panel out of the add-on pill.
-//  The scene only draws and reports what was touched (`eq_toggle`, `preset(n)`, `bset(band * 1000 + (dB + 12) * 10)`); eq.luau keeps the bands and
+//  The scene only draws and reports what was touched (`eq_toggle`, `preset(n)`, `bset(band * 1000 + (dB + 12) * 10)`, `boost(dB)`); eq.luau keeps the bands and
 //  runs vitreus-eq, which does the filtering (PipeWire's filter-chain). Drag a band, right-click it to put it back to 0 dB.
 
 scene Equalizer {
@@ -94,6 +94,10 @@ scene Equalizer {
     fact bend = 1                                     // 1: the glass bends what is behind it; 0: it only blurs (cheaper): `pleamar --say equalizer "fact bend 0"`
     event eq_toggle ->
     event preset ->
+    //  The Boost: 0 to 12 dB past the output's own 100 %, into a limiter at the end of the filter. `boost_ok` is 0 when lsp-plugins (the limiter) is not installed.
+    fact boost = 0
+    fact boost_ok = 1
+    event boost ->
     event bset ->
     repeat i in 0..10 {
         fact g.$i = 0
@@ -150,7 +154,7 @@ scene Equalizer {
     let x0 = left + 24
 
     //  The bands: 12 dB up and down. A column is 1/10 of the width; y is worked out the same way in the rules below.
-    let by0 = top + 138 * u
+    let by0 = top + 178 * u
     let by1 = top + slot_h - 34 * u
     let bh = by1 - by0
     let bym = (by0 + by1) / 2
@@ -208,6 +212,24 @@ scene Equalizer {
             zone box chip.$k { from: x0 + k * pw, py; size: pw, ph; cursor: pointer; label: "Preset"; active: shown > 0.5 }
             on press chip.$k { emit preset(k) }
         }
+
+        //  ── the Boost: louder than 100 %, into the limiter. Drag along it; a right-click puts it back to 0 ──
+        let bty = py + ph + 22 * u
+        let bsx = x0 + 62 * u
+        let bsw = wd - 62 * u - 58 * u
+        let bok = boost_ok
+        let bhot = if(bz.hover > 0.5, 1, 0)
+        text "Boost" { at: x0 + 4 * u, bty; anchor: left center; size: 12.5 * u; weight: 700; color: ink; opacity: shown * (0.45 + 0.55 * bok); family: "Space Grotesk" }
+        group {
+            opacity: 0.35 + 0.65 * bok
+            PSlider(x0: bsx, y: bty, w: bsw, lv: boost / 12, h: 12 * u, f: bhot * fr)
+        }
+        text number(boost, 0, " dB") { at: x0 + wd - 4 * u, bty; anchor: right center; size: 12 * u; weight: 700; color: mix(faint, mint, if(boost > 0.5, 1, 0)); opacity: shown * bok; family: "Space Grotesk" }
+        text "needs lsp-plugins" { at: x0 + wd - 4 * u, bty; anchor: right center; size: 10.5 * u; weight: 600; color: faint; opacity: shown * (1 - bok); family: "Space Grotesk" }
+        zone box bz { from: bsx - 8 * u, bty - 14 * u; size: bsw + 16 * u, 28 * u; cursor: ew_resize; label: "Boost (drag left or right)"; active: shown > 0.5 and bok > 0.5 }
+        on press bz { emit boost(floor(clamp((pointer.x - bsx) / bsw, 0, 1) * 12 + 0.5)) }
+        on drag bz { emit boost(floor(clamp((pointer.x - bsx) / bsw, 0, 1) * 12 + 0.5)) }
+        on press right bz { emit boost(0) }
     }
 
     group {

@@ -1,5 +1,5 @@
 -- The logic of the Equalizer: it keeps the ten gains, the switch and the lit preset in the add-on's data folder, runs vitreus-eq (JSON lines in and out) and sends it the bands.
--- The scene only reports what was touched: `eq_toggle`, `preset(n)` and `bset(band * 1000 + (dB + 12) * 10)`.
+-- The scene only reports what was touched: `eq_toggle`, `preset(n)`, `bset(band * 1000 + (dB + 12) * 10)` and `boost(dB)`.
 local ok_f, folder = pcall(sys.ask, "files.folder")
 if not ok_f then folder = "" end
 
@@ -12,13 +12,14 @@ local PRESETS = {
     { name = "Loud",   g = { 5, 4, 1, 0, -1, -1, 0, 2, 4, 5 } },
 }
 
--- cur: the lit preset (0-based), or -1 when the curve is your own.
-local st = { on = false, cur = 0, gains = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } }
+-- cur: the lit preset (0-based), or -1 when the curve is your own. boost: dB past the output's 100 % (0 to 12), into vitreus-eq's limiter.
+local st = { on = false, cur = 0, gains = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, boost = 0 }
 do
     local ok, saved = pcall(sys.ask, "files.read", "state.json", "json")
     if ok and type(saved) == "table" then
         st.on = saved.on == true
         st.cur = math.floor(tonumber(saved.cur) or 0)
+        st.boost = math.max(0, math.min(12, math.floor(tonumber(saved.boost) or 0)))
         if type(saved.gains) == "table" and #saved.gains == N then
             for i = 1, N do st.gains[i] = math.max(-12, math.min(12, tonumber(saved.gains[i]) or 0)) end
         end
@@ -45,6 +46,7 @@ end
 local function show()
     for i = 1, N do fact["g." .. (i - 1)] = st.gains[i] end
     fact.cur = st.cur
+    fact.boost = st.boost
     fact.eq_on = st.on and 1 or 0
     local name = PRESETS[st.cur + 1] and PRESETS[st.cur + 1].name or "Custom"
     if err ~= "" and st.on then
@@ -65,7 +67,7 @@ local function apply()                       -- (a drag sends a stream of values
     pending = true
     after(40, function()
         pending = false
-        send({ cmd = "apply", on = st.on, gains = st.gains })
+        send({ cmd = "apply", on = st.on, gains = st.gains, boost = st.boost })
     end)
 end
 
@@ -87,6 +89,7 @@ local function on_line(line)
     target = type(ev.target) == "string" and ev.target or ""
     active = ev.active ~= false
     err = type(ev.error) == "string" and ev.error or ""
+    fact.boost_ok = ev.limiter == false and 0 or 1
     show()
 end
 
@@ -122,7 +125,7 @@ on("eq_toggle", function()
     st.on = not st.on
     save()
     show()
-    send({ cmd = "apply", on = st.on, gains = st.gains })
+    send({ cmd = "apply", on = st.on, gains = st.gains, boost = st.boost })
 end)
 on("preset", function(n)
     local p = PRESETS[(tonumber(n) or -1) + 1]
@@ -131,6 +134,14 @@ on("preset", function(n)
     for i = 1, N do st.gains[i] = p.g[i] end
     save()
     show()
+    apply()
+end)
+on("boost", function(v)
+    v = math.max(0, math.min(12, math.floor((tonumber(v) or 0) + 0.5)))
+    if v == st.boost then return end
+    st.boost = v
+    fact.boost = v
+    save()
     apply()
 end)
 on("bset", function(v)

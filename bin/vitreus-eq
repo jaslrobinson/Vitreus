@@ -9,9 +9,10 @@ Python standard library, pipewire, pw-cli, pw-dump and pactl; the spectrum also 
 them the panel just has no spectrum).
 
 The panel talks to it in JSON lines: one command per line on stdin, one event per line on stdout.
-  in : {"cmd":"apply","on":true,"gains":[0,0,0,0,0,0,0,0,0,0]}   {"cmd":"spectrum","on":true}   {"cmd":"stop"}
+  in : {"cmd":"apply","on":true,"gains":[0,0,0,0,0,0,0,0,0,0],"boost":0}   {"cmd":"spectrum","on":true}   {"cmd":"stop"}
        {"cmd":"claim"}   (make the EQ the default output again after the output was changed)
-  out: {"ev":"state","on":true,"active":true,"target":"alsa_output...","error":""}   (active: the EQ is the default output, not bypassed)
+  out: {"ev":"state","on":true,"active":true,"target":"alsa_output...","error":"","limiter":true}   (active: the EQ is the default output, not bypassed;
+       limiter: the Boost can be used, as lsp-plugins' limiter is there)
        {"ev":"spec","b":[ten levels 0..1],"p":[their peaks]}   (only while the spectrum is on and something is playing)
 argv[1] is the add-on's data folder, where the generated chain.conf is kept.
 """
@@ -40,10 +41,23 @@ BANDS = [("bq_lowshelf", 32, 0.7), ("bq_peaking", 64, 1.41), ("bq_peaking", 125,
          ("bq_peaking", 500, 1.41), ("bq_peaking", 1000, 1.41), ("bq_peaking", 2000, 1.41), ("bq_peaking", 4000, 1.41),
          ("bq_peaking", 8000, 1.41), ("bq_highshelf", 16000, 0.7)]
 MAXDB = 12.0
+MAXBOOST = 12.0         # the Boost: up to 12 dB more than the output's own 100 %, into a limiter (LSP's, LV2) so the peaks do not clip
+LIMITER = "http://lsp-plug.in/plugins/lv2/limiter_mono"
+CEILING = 10 ** (-1 / 20)                                       # the limiter's threshold: -1 dB
+
+
+def limiter_available():
+    """Is lsp-plugins' mono limiter installed where PipeWire's LV2 host looks (LV2_PATH, else the usual folders)?"""
+    dirs = os.environ.get("LV2_PATH", "").split(":") + [os.path.expanduser("~/.lv2"), "/usr/local/lib/lv2", "/usr/lib/lv2"]
+    return any(d and os.path.isfile(os.path.join(d, "lsp-plugins.lv2", "limiter_mono.ttl")) for d in dirs)
+
+
+HAS_LIMITER = limiter_available()
 
 lock = threading.Lock()
 want_on = False
 gains = [0.0] * len(BANDS)
+boost = 0.0             # dB, 0 to MAXBOOST
 chain = None            # the child pipewire process
 target = ""             # the output it plays into
 node_id = None
@@ -76,8 +90,15 @@ def sink_exists(name):
 
 
 def preamp(gs):
-    """Take off as much as the loudest boost adds, so a boost does not clip."""
+    """Take off as much as the loudest boost adds, so a boost does not clip. With the limiter at the end there is no need: it
+    catches the peaks, and the curve keeps the loudness it was set to."""
+    if HAS_LIMITER:
+        return 1.0
     return 10 ** (-max(0.0, max(gs)) / 20)
+
+
+def boost_gain():
+    return 10 ** (max(0.0, min(MAXBOOST, boost)) / 20)
 
 
 def write_conf(tgt):
@@ -88,6 +109,10 @@ def write_conf(tgt):
         nodes.append('{ type = builtin name = eq%d label = %s control = { "Freq" = %d "Q" = %.2f "Gain" = %.2f } }' % (i, kind, hz, q, gains[i]))
         links.append('{ output = "%s:Out" input = "eq%d:In" }' % (prev, i))
         prev = "eq%d" % i
+    if HAS_LIMITER:
+        nodes.append('{ type = lv2 name = lim plugin = "%s" control = { "g_in" = %.5f "th" = %.5f "boost" = 0 } }' % (LIMITER, boost_gain(), CEILING))
+        links.append('{ output = "%s:Out" input = "lim:in" }' % prev)
+        prev = "lim"
     text = """context.properties = { log.level = 1 }
 context.spa-libs = { audio.convert.* = audioconvert/libspa-audioconvert  support.* = support/libspa-support }
 context.modules = [
@@ -104,7 +129,7 @@ context.modules = [
         nodes = [ %s ]
         links = [ %s ]
         inputs = [ "pre:In" ]
-        outputs = [ "%s:Out" ]
+        outputs = [ "%s:%s" ]
       }
       audio.channels = 2
       audio.position = [ FL FR ]
@@ -112,7 +137,7 @@ context.modules = [
       playback.props = { node.name = "%s_out" node.passive = true target.object = "%s" stream.dont-remix = true }
     } }
 ]
-""" % ("\n          ".join(nodes), " ".join(links), prev, SINK, SINK, tgt)
+""" % ("\n          ".join(nodes), " ".join(links), prev, "out" if prev == "lim" else "Out", SINK, SINK, tgt)
     os.makedirs(DATA, exist_ok=True)
     with open(CONF, "w") as f:
         f.write(text)
@@ -146,6 +171,8 @@ def push_params():
         params = ['"channelmix.min-volume"', "1.0", '"channelmix.max-volume"', "1.0", '"pre:Mult"', "%.5f" % preamp(gains)]
         for i, g in enumerate(gains):
             params += ['"eq%d:Gain"' % i, "%.2f" % g]
+        if HAS_LIMITER:
+            params += ['"lim:g_in"', "%.5f" % boost_gain()]
         r = subprocess.run(["pw-cli", "s", str(node_id), "Props", "{ params = [ %s ] }" % " ".join(params)], capture_output=True, text=True, timeout=5)
         if r.returncode == 0 and "rror" not in r.stderr + r.stdout:
             return True
@@ -231,7 +258,7 @@ def reconcile():
                 stop_chain(target)
             error = ""
         up = bool(want_on and chain is not None)
-        emit(on=up, active=bool(up and default_sink() == SINK), target=target if chain is not None else "", error=error)
+        emit(on=up, active=bool(up and default_sink() == SINK), target=target if chain is not None else "", error=error, limiter=HAS_LIMITER)
 
 
 # ── the volume ──
@@ -444,7 +471,7 @@ def shutdown(*_):
 
 
 def main():
-    global want_on, gains, spec_on, claim
+    global want_on, gains, boost, spec_on, claim
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGHUP, shutdown)
 
@@ -460,7 +487,7 @@ def main():
     threading.Thread(target=volume_loop, daemon=True).start()
     if np is not None:
         threading.Thread(target=spectrum_loop, daemon=True).start()
-    emit(on=False, active=False, target="", error="")
+    emit(on=False, active=False, target="", error="", limiter=HAS_LIMITER)
     for line in sys.stdin:
         try:
             m = json.loads(line)
@@ -477,6 +504,10 @@ def main():
                 new = [max(-MAXDB, min(MAXDB, float(g))) for g in gs]
                 with lock:
                     gains = new
+                    try:
+                        boost = max(0.0, min(MAXBOOST, float(m.get("boost", 0))))
+                    except (TypeError, ValueError):
+                        boost = 0.0
                     live = want_on and chain is not None
                     if live:
                         push_params()
