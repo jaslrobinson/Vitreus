@@ -462,6 +462,17 @@ def wake(host, mac):
     return True
 
 
+def is_webos(host):
+    """Does `host` answer on an LG's ports (for an address typed in, which the scan did not say the kind of)?"""
+    for port in WEBOS_PORTS:
+        try:
+            socket.create_connection((host, port), timeout=2).close()
+            return True
+        except OSError:
+            pass
+    return False
+
+
 class WebOS:
     """An LG webOS TV: requests and subscriptions on one WebSocket, the d-pad's buttons on a second one the TV hands out."""
 
@@ -952,7 +963,10 @@ def main():
                 want["on"] = False
                 break
         except (ConnectionError, OSError, ssl.SSLError, PairRefused) as e:
-            if cmd == "pair":
+            if cmd == "pair" and c.get("kind", "atv") == "atv" and is_webos(host):
+                emit(ev="kind", host=host, kind="webos")      # a typed address that is an LG, not a Google TV
+                pairing = None
+            elif cmd == "pair":
                 emit(ev="state", stage="pairing_failed", msg=str(e))
                 pairing = None
             else:

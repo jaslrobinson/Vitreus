@@ -4,7 +4,8 @@ local U = 1.1
 local ok_f, folder = pcall(sys.ask, "files.folder")
 if not ok_f then folder = "" end
 
--- The saved TVs: { tvs = { { host, name }, ... }, cur = which one is in use }. The first version kept one `host`: it becomes the first TV.
+-- The saved TVs: { tvs = { { host, name, kind, mac }, ... }, cur = which one is in use }. `kind` is "atv" (a Google TV / Android TV) or "webos" (an LG),
+-- `mac` an LG's, for Wake-on-LAN. The first version kept one `host`: it becomes the first TV; TVs saved before kinds are Google TVs.
 local MAXTV = 5
 local cfg = { tvs = {}, cur = 1 }
 do
@@ -12,17 +13,23 @@ do
     if ok and type(saved) == "table" then
         if type(saved.tvs) == "table" then
             for _, tv in ipairs(saved.tvs) do
-                if type(tv) == "table" and type(tv.host) == "string" and tv.host ~= "" then cfg.tvs[#cfg.tvs + 1] = { host = tv.host, name = type(tv.name) == "string" and tv.name or "" } end
+                if type(tv) == "table" and type(tv.host) == "string" and tv.host ~= "" then
+                    cfg.tvs[#cfg.tvs + 1] = { host = tv.host, name = type(tv.name) == "string" and tv.name or "", kind = tv.kind == "webos" and "webos" or "atv",
+                        mac = type(tv.mac) == "string" and tv.mac or "" }
+                end
             end
             cfg.cur = math.max(1, math.min(#cfg.tvs, math.floor(tonumber(saved.cur) or 1)))
         elseif type(saved.host) == "string" and saved.host ~= "" then
-            cfg.tvs[1] = { host = saved.host, name = "" }
+            cfg.tvs[1] = { host = saved.host, name = "", kind = "atv", mac = "" }
         end
     end
 end
 local function save_cfg() pcall(sys.call, "files.write", "config.json", cfg) end
 local function cur_tv() return cfg.tvs[cfg.cur] end
 local function cur_host() local tv = cur_tv() return tv and tv.host or "" end
+local function cur_kind() local tv = cur_tv() return tv and tv.kind or "atv" end
+local function cur_mac() local tv = cur_tv() return tv and tv.mac or "" end
+local function lg() return cur_kind() == "webos" end
 local function tv_label(tv) return tv.name ~= "" and tv.name or tv.host end
 local function saved_host(h) for i, tv in ipairs(cfg.tvs) do if tv.host == h then return i end end return nil end
 
@@ -93,6 +100,7 @@ local function refresh_menu()       -- the switcher's rows (the saved TVs, then 
     fact.menu_cnt = n < MAXTV and n + 1 or n
     local cur = cur_tv()
     text.tv_name = cur and tv_label(cur) or "TV"
+    fact.tv_kind = lg() and 1 or 0
 end
 local function set_stage(n, t, s, b)
     local changed = n ~= st
@@ -129,9 +137,13 @@ local APPS = {
     ["com.disney.disneyplus"] = "Disney+", ["com.spotify.tv.android"] = "Spotify", ["com.google.android.tvlauncher"] = "Home",
     ["com.google.android.apps.tv.launcherx"] = "Home", ["com.google.android.tv.settings"] = "Settings", ["com.android.vending"] = "Play Store",
     ["com.plexapp.android"] = "Plex", ["org.videolan.vlc"] = "VLC", ["com.google.android.youtube.tvmusic"] = "YouTube Music",
+    ["youtube.leanback.v4"] = "YouTube", ["netflix"] = "Netflix", ["amazon"] = "Prime Video", ["com.webos.app.livetv"] = "Live TV",
+    ["com.webos.app.home"] = "Home", ["com.webos.app.homeconnect"] = "Home Dashboard",
 }
 local function app_label(pkg)
     if pkg == nil or pkg == "" then return "" end
+    local hdmi = pkg:match("^com%.webos%.app%.hdmi(%d)$")         -- an LG on one of its inputs
+    if hdmi then return "HDMI " .. hdmi end
     return APPS[pkg] or (pkg:match("([^%.]+)$") or pkg)
 end
 local function show_ready(ev)
@@ -156,11 +168,37 @@ local function show_ready(ev)
     fact.muted = ev.muted == true
     text.sub = table.concat(bits, " · ")
 end
+-- An LG's inputs or apps, as a list over the remote: eight rows a page, and a ninth that turns the page when there are more.
+local sheet = { kind = "inputs", list = {}, page = 0 }
+local PER = 8
+local function show_sheet()
+    local n = #sheet.list
+    local pages = math.max(1, math.ceil(n / PER))
+    sheet.page = sheet.page % pages
+    local first = sheet.page * PER
+    local title = sheet.kind == "inputs" and "Inputs" or "Apps"
+    text.sheet_t = pages > 1 and (title .. "  ·  " .. (sheet.page + 1) .. " of " .. pages) or title
+    local rows, cur = 0, -1
+    for k = 0, PER - 1 do
+        local it = sheet.list[first + k + 1]
+        text["sheet_" .. k] = it and (it.label or it.id or "") or ""
+        if it then
+            rows = k + 1
+            if it.on then cur = k end
+        end
+    end
+    text.sheet_8 = pages > 1 and "More…" or ""
+    fact.sheet_cnt = pages > 1 and PER + 1 or rows
+    fact.sheet_cur = cur
+    fact.sheet_open = true
+    fact.menu_open = false
+end
+
 local function on_line(line)
     local ok, ev = pcall(json.decode, line)
     if not ok or type(ev) ~= "table" then return end
     if ev.ev == "hello" then
-        if cur_host() ~= "" then send({ cmd = "connect", host = cur_host() }) else send({ cmd = "scan" }) end
+        if cur_host() ~= "" then send({ cmd = "connect", host = cur_host(), kind = cur_kind(), mac = cur_mac() }) else send({ cmd = "scan" }) end
     elseif ev.ev == "found" then
         found = {}
         for _, tv in ipairs(type(ev.tvs) == "table" and ev.tvs or {}) do
@@ -176,7 +214,13 @@ local function on_line(line)
         elseif s == "connecting" then
             if st ~= 1 and st ~= 5 then set_stage(0, "Connecting…", cur_host()) end      -- (an unreachable TV is retried quietly: the screen stays as it is until it answers)
         elseif s == "needs_pairing" then
-            set_stage(3, "Pair with your TV", "A six-character code will appear on the TV. Type it here.", "Pair with TV")
+            if lg() then
+                set_stage(3, "Pair with your TV", "Your TV will ask whether to allow Vitreus: answer with its own remote.", "Pair with TV")
+            else
+                set_stage(3, "Pair with your TV", "A six-character code will appear on the TV. Type it here.", "Pair with TV")
+            end
+        elseif s == "pair_wait_accept" then                     -- an LG: the question is on its screen
+            set_stage(0, "Accept on your TV", "Use the TV's own remote to allow Vitreus. The question is on its screen now.")
         elseif s == "pair_wait_code" then
             set_stage(4, "Type the code", ev.msg and (ev.msg .. ". Look at the TV again.") or "It is on the TV's screen, six letters and numbers.")
         elseif s == "pairing_failed" then
@@ -186,8 +230,22 @@ local function on_line(line)
             set_stage(0, "Paired", "Connecting…")
         elseif s == "error" then
             fail_kind = "conn"
-            set_stage(5, "Can't reach the TV", "It may be off. This tries again by itself, and you can switch TVs from the name above.", "Try now")
+            set_stage(5, "Can't reach the TV", "It may be off. This tries again by itself, and you can switch TVs from the name above.", lg() and "Wake TV" or "Try now")
         end
+    elseif ev.ev == "kind" then                                -- a typed address turned out to be an LG: pair it as one
+        local i = saved_host(ev.host)
+        if i and ev.kind == "webos" then
+            cfg.tvs[i].kind = "webos"
+            save_cfg()
+            refresh_menu()
+            set_stage(0, "Asking the TV…", "A question is about to appear on its screen.")
+            send({ cmd = "pair", host = ev.host, kind = "webos", mac = cfg.tvs[i].mac })
+        end
+    elseif ev.ev == "inputs" or ev.ev == "apps" then
+        sheet.kind = ev.ev
+        sheet.list = type(ev.list) == "table" and ev.list or {}
+        sheet.page = 0
+        show_sheet()
     elseif ev.ev == "log" then
         log("tvremote", ev.msg)
     end
@@ -207,6 +265,7 @@ local KEY = { [1] = "UP", [2] = "DOWN", [3] = "LEFT", [4] = "RIGHT", [5] = "OK",
 local LINK = { [17] = "https://www.youtube.com", [18] = "https://www.netflix.com/title", [19] = "https://app.primevideo.com", [20] = "https://www.disneyplus.com" }
 local function add_stage()
     fact.menu_open = false
+    fact.sheet_open = false
     set_stage(2, "Add a TV", "Looking for TVs on your network…", #cfg.tvs > 0 and "Cancel" or "")
     send({ cmd = "scan" })
 end
@@ -214,15 +273,16 @@ local function use(i)                      -- connect to the i-th saved TV
     cfg.cur = i
     save_cfg()
     fact.menu_open = false
+    fact.sheet_open = false
     refresh_menu()
     set_stage(0, "Connecting…", cur_host())
-    send({ cmd = "connect", host = cur_host() })
+    send({ cmd = "connect", host = cur_host(), kind = cur_kind(), mac = cur_mac() })
 end
-local function add_tv(host, name)
+local function add_tv(host, name, kind, mac)
     local i = saved_host(host)
     if not i then
         if #cfg.tvs >= MAXTV then return end
-        cfg.tvs[#cfg.tvs + 1] = { host = host, name = name or "" }
+        cfg.tvs[#cfg.tvs + 1] = { host = host, name = name or "", kind = kind == "webos" and "webos" or "atv", mac = mac or "" }
         i = #cfg.tvs
     end
     use(i)
@@ -233,16 +293,33 @@ on("tv_act", function(id)
         if st == 2 then if #cfg.tvs > 0 then use(cfg.cur) end return end          -- Cancel
         if st == 5 and fail_kind == "conn" then
             set_stage(0, "Connecting…", cur_host())
-            send({ cmd = "reconnect", host = cur_host() })
+            if lg() then send({ cmd = "wake", host = cur_host(), mac = cur_mac() }) end      -- an LG in standby: Wake-on-LAN first
+            send({ cmd = "reconnect", host = cur_host(), kind = cur_kind(), mac = cur_mac() })
             return
         end
-        set_stage(0, "Asking the TV…", "A code is about to appear on its screen.")
-        send({ cmd = "pair", host = cur_host() })
+        if lg() then
+            set_stage(0, "Asking the TV…", "A question is about to appear on its screen.")
+        else
+            set_stage(0, "Asking the TV…", "A code is about to appear on its screen.")
+        end
+        send({ cmd = "pair", host = cur_host(), kind = cur_kind(), mac = cur_mac() })
+    elseif lg() and (id == 17 or id == 18) then       -- an LG's Inputs and Apps: the list comes back as an event
+        send({ cmd = id == 17 and "inputs" or "apps" })
+    elseif lg() and (id == 19 or id == 20) then
+        send({ cmd = "launch", id = id == 19 and "youtube.leanback.v4" or "netflix" })
     elseif KEY[id] then
         send({ cmd = "key", key = KEY[id] })
     elseif LINK[id] then
         send({ cmd = "app", link = LINK[id] })
     end
+end)
+on("tv_sheet", function(k)                 -- a row of an LG's list
+    k = math.floor((tonumber(k) or 0) + 0.5)
+    if k == PER then sheet.page = sheet.page + 1 show_sheet() return end
+    local it = sheet.list[sheet.page * PER + k + 1]
+    if not it then return end
+    if sheet.kind == "inputs" then send({ cmd = "input", id = it.id }) else send({ cmd = "launch", id = it.id }) end
+    fact.sheet_open = false
 end)
 on("tv_menu", function(k)                  -- a row of the switcher
     k = math.floor((tonumber(k) or 0) + 0.5) + 1
@@ -256,7 +333,7 @@ on("tv_forget", function(k)
     k = math.floor((tonumber(k) or 0) + 0.5) + 1
     local tv = cfg.tvs[k]
     if not tv then return end
-    send({ cmd = "unpair", host = tv.host })
+    send({ cmd = "unpair", host = tv.host, kind = tv.kind })
     table.remove(cfg.tvs, k)
     if #cfg.tvs == 0 then
         cfg.cur = 1
@@ -275,13 +352,13 @@ end)
 on("tv_pick", function(k)
     local tv = found[math.floor((tonumber(k) or 0) + 0.5) + 1]
     if not tv or st ~= 2 then return end
-    add_tv(tv.host, tv.name)
+    add_tv(tv.host, tv.name, tv.kind, tv.mac)
 end)
 on("field_enter", function()
     local q = trim(text.field_q)
     if q == "" then return end
     if st == 2 then
-        add_tv(q, "")
+        add_tv(q, "", "atv", "")                      -- (an LG is recognised when it is paired: the helper says `kind`)
     elseif st == 4 then
         send({ cmd = "code", code = q })
     elseif st == 1 then
