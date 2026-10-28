@@ -707,14 +707,51 @@ def dns_name(buf, i):
     return ".".join(labels), end
 
 
+def parse_mdns(data, ip, found):
+    """Read one mDNS answer from `ip` into found[(ip, kind)]: Google TVs (_androidtvremote2) and LG webOS TVs (_display, "[LG] …",
+    with the MAC their TXT record carries, for Wake-on-LAN)."""
+    try:
+        qd, an, ns, ar = (int.from_bytes(data[k:k + 2], "big") for k in (4, 6, 8, 10))
+        i = 12
+        for _ in range(qd):
+            _, i = dns_name(data, i)
+            i += 4
+        for _ in range(an + ns + ar):
+            owner, i = dns_name(data, i)
+            rtype = int.from_bytes(data[i:i + 2], "big")
+            ln = int.from_bytes(data[i + 8:i + 10], "big")
+            rd = i + 10
+            if rtype == 12:                                              # PTR: the instance's name
+                inst, _ = dns_name(data, rd)
+                if "._androidtvremote2" in inst:
+                    found.setdefault((ip, "atv"), {"host": ip, "name": inst.split("._androidtvremote2")[0], "kind": "atv"})
+                elif "._display._tcp" in inst and inst.startswith("[LG]"):
+                    tv = found.setdefault((ip, "webos"), {"host": ip, "name": "", "kind": "webos", "mac": ""})
+                    tv["name"] = inst.split("._display")[0][4:].strip()
+            elif rtype == 16 and owner.startswith("[LG]"):              # TXT: "key=value" strings, the LG's MAC among them
+                tv = found.setdefault((ip, "webos"), {"host": ip, "name": owner.split("._display")[0][4:].strip(), "kind": "webos", "mac": ""})
+                k = rd
+                while k < rd + ln:
+                    n = data[k]
+                    kv = data[k + 1:k + 1 + n].decode(errors="replace")
+                    if kv.startswith("mac="):
+                        tv["mac"] = kv[4:].lower()
+                    k += 1 + n
+            i = rd + ln
+    except (IndexError, ValueError):
+        pass
+
+
 def scan(seconds=3.0):
-    """Ask the network for _androidtvremote2._tcp and return [{"host", "name"}] for what answers."""
-    q = b"".join(bytes([len(x)]) + x.encode() for x in ("_androidtvremote2", "_tcp", "local")) + b"\x00"
-    packet = bytes(12)[:4] + b"\x00\x01" + bytes(6) + q + b"\x00\x0c" + b"\x80\x01"     # PTR, class IN with the unicast-reply bit
+    """Ask the network for Google TVs and LG webOS TVs; return [{"host", "name", "kind", ("mac")}] for what answers."""
+    def question(service):                                              # PTR, class IN with the unicast-reply bit
+        return b"".join(bytes([len(x)]) + x.encode() for x in (service, "_tcp", "local")) + b"\x00" + b"\x00\x0c\x80\x01"
+    packet = bytes(4) + (2).to_bytes(2, "big") + bytes(6) + question("_androidtvremote2") + question("_display")
     found = {}
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # Many TVs (an onn Google TV box, for one) ignore the unicast-reply bit and answer by multicast to port 5353, never to the port
-    # the question came from; a firewall such as ufw also lets only multicast mDNS in. So listen on 5353 as well, beside avahi (shared).
+    # Many TVs (an onn Google TV box, for one) ignore the unicast-reply bit and answer by multicast to port 5353, and some (an LG)
+    # answer nothing that was not asked FROM 5353; a firewall such as ufw also lets only multicast mDNS in. So ask from 5353 and
+    # listen there too, beside avahi (shared); the socket on a port of its own is the fallback.
     group = None
     try:
         group = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
@@ -723,6 +760,7 @@ def scan(seconds=3.0):
             group.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         group.bind(("", 5353))
         group.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, socket.inet_aton("224.0.0.251") + socket.inet_aton("0.0.0.0"))
+        group.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
     except OSError:
         if group is not None:
             group.close()
@@ -735,7 +773,7 @@ def scan(seconds=3.0):
         next_ask = 0
         while time.time() < deadline:
             if time.time() >= next_ask:
-                sock.sendto(packet, ("224.0.0.251", 5353))
+                (group or sock).sendto(packet, ("224.0.0.251", 5353))
                 next_ask = time.time() + 1.0
             try:
                 ready, _, _ = select.select(listening, [], [], 0.25)
@@ -744,29 +782,13 @@ def scan(seconds=3.0):
                 data, (ip, _) = ready[0].recvfrom(9000)
             except OSError:
                 break
-            try:
-                qd, an, ns, ar = (int.from_bytes(data[k:k + 2], "big") for k in (4, 6, 8, 10))
-                i = 12
-                for _ in range(qd):
-                    _, i = dns_name(data, i)
-                    i += 4
-                for _ in range(an + ns + ar):
-                    _, i = dns_name(data, i)
-                    rtype = int.from_bytes(data[i:i + 2], "big")
-                    ln = int.from_bytes(data[i + 8:i + 10], "big")
-                    rd = i + 10
-                    if rtype == 12:                                              # PTR: the instance's name
-                        inst, _ = dns_name(data, rd)
-                        if "_androidtvremote2" in inst:
-                            found[ip] = inst.split("._androidtvremote2")[0]
-                    i = rd + ln
-            except (IndexError, ValueError):
-                continue
+            if len(data) > 12 and data[2] & 0x80:                       # answers only (our own question comes back on 5353)
+                parse_mdns(data, ip, found)
     finally:
         sock.close()
         if group:
             group.close()
-    return [{"host": h, "name": n} for h, n in sorted(found.items())]
+    return [v for _, v in sorted(found.items())]
 
 
 CHARS = {" ": 62, ".": 56, ",": 55, "-": 69, "/": 76, "@": 77, "'": 75, ";": 74, "=": 70}

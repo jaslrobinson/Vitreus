@@ -159,7 +159,21 @@ def stage(s):
     return lambda e: e.get("ev") == "state" and e.get("stage") == s
 
 
+def check_scan_parse():
+    """The LG's real mDNS answer (dev/fixtures, captured from an OLED65CX) is read as an LG with its MAC."""
+    import importlib.machinery, importlib.util
+    ld = importlib.machinery.SourceFileLoader("tvr", HELPER)
+    tvr = importlib.util.module_from_spec(importlib.util.spec_from_loader("tvr", ld))
+    ld.exec_module(tvr)
+    found = {}
+    tvr.parse_mdns(open(os.path.join(HERE, "fixtures", "lg-display-mdns.bin"), "rb").read(), "10.0.0.4", found)
+    got = list(found.values())
+    if not got or got[0]["kind"] != "webos" or len(got[0].get("mac", "")) != 17 or "OLED" not in got[0]["name"]:
+        fail("the LG's mDNS answer parsed as %s" % got)
+
+
 def main():
+    check_scan_parse()
     tmp = tempfile.mkdtemp()
     subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1", "-subj", "/CN=fake",
                     "-keyout", tmp + "/k.pem", "-out", tmp + "/c.pem"], check=True, capture_output=True)
