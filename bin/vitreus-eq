@@ -269,9 +269,7 @@ def reconcile():
                     set_default(SINK)
                 claim = False
             elif d and d != SINK and d != target:
-                stop_chain(None)                                   # pointed at the output that was picked
-                if start_chain(d):
-                    push_params()
+                pass                                               # the user picked another output: let it play directly, keep the EQ on its target
             elif not sink_exists(target):
                 stop_chain(None)                                   # the output went away (a headset switched off): the next round starts again on the default
         else:
