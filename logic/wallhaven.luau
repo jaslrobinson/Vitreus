@@ -66,7 +66,7 @@ return function(with_dirs, reload, apply, refresh_local)
             end
             results, page = rows, p
             show_page()
-            if #rows == 0 then say("Nothing found") end
+            say(#rows == 0 and "Nothing found" or "")        -- (clears the "Searching…" note: without this it stayed on screen beside the results)
         end)
     end
 
