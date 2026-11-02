@@ -49,9 +49,10 @@ part Glass {
             on scroll glass_hit2 { gl_scroll_to = clamp(gl_scroll_to - wheel * 44, 0, max(0, gl.h - set.h)) }
             on drag glass_hit2 { emit glass_blur_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
 
-            //  Everything the glass is made of: greyed out while the glass is off.
+            //  Everything the glass is made of: greyed out while the Glass switch is off (`gobs`, not `obs`): a look that draws a solid
+            //  plate of its own (Paper, Proxy, Cassette, uwu, Milk, Game Mode) hides the glass but does not take these settings away.
             group {
-                opacity: 1 - 0.65 * obs
+                opacity: 1 - 0.65 * gobs
             //  Glass.
 
             //  Opacity.
@@ -69,7 +70,7 @@ part Glass {
             box { from: gsl.x0, sby + 299 * pu - gls_gh / 2; size: gsl.w * 0.3, gls_gh; corner: gls_gh / 2; color: #000000; opacity: 38% }
             box { at: gsl.x0 + gsl.w * 0.3, sby + 299 * pu; size: 1.5 * pu, gls_gh + 6 * pu; corner: 0.75 * pu; color: ink; opacity: 45% }
             group { scale: rs; pivot: floor(spx + 424 * pu + 0.5), floor(sby + 270 * pu + 0.5); text glass_op_text { at: floor(spx + 424 * pu + 0.5), floor(sby + 270 * pu + 0.5); anchor: right center; size: 20; weight: 600; color: ink; opacity: 100%; family: "Space Grotesk" } }
-            zone box glass_hit1 { at: gsl.x0 + gsl.w / 2, sby + 299 * pu; size: gsl.w + 28 * pu, 26 * pu; cursor: pointer; active: (obs < 0.5) and (sby + 299 * pu) - gl.off > sby and (sby + 299 * pu) - gl.off < sby + set.h * pu }
+            zone box glass_hit1 { at: gsl.x0 + gsl.w / 2, sby + 299 * pu; size: gsl.w + 28 * pu, 26 * pu; cursor: pointer; active: (gobs < 0.5) and (sby + 299 * pu) - gl.off > sby and (sby + 299 * pu) - gl.off < sby + set.h * pu }
             on press glass_hit1 { emit glass_op_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
             on scroll glass_hit1 { gl_scroll_to = clamp(gl_scroll_to - wheel * 44, 0, max(0, gl.h - set.h)) }
             on drag glass_hit1 { emit glass_op_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
@@ -86,7 +87,7 @@ part Glass {
                 PSlider(gsl.x0, sby + 357 * pu, gsl.w, clamp(clamp(glass_rim / 2, 0, 1), 0, 1), glass_hit3.hover, cu, gls_gh, 0)
             }
             group { scale: rs; pivot: floor(spx + 424 * pu + 0.5), floor(sby + 328 * pu + 0.5); text glass_rim_text { at: floor(spx + 424 * pu + 0.5), floor(sby + 328 * pu + 0.5); anchor: right center; size: 20; weight: 600; color: ink; opacity: 100%; family: "Space Grotesk" } }
-            zone box glass_hit3 { at: gsl.x0 + gsl.w / 2, sby + 357 * pu; size: gsl.w + 28 * pu, 26 * pu; cursor: pointer; active: (obs < 0.5) and (sby + 357 * pu) - gl.off > sby and (sby + 357 * pu) - gl.off < sby + set.h * pu }
+            zone box glass_hit3 { at: gsl.x0 + gsl.w / 2, sby + 357 * pu; size: gsl.w + 28 * pu, 26 * pu; cursor: pointer; active: (gobs < 0.5) and (sby + 357 * pu) - gl.off > sby and (sby + 357 * pu) - gl.off < sby + set.h * pu }
             on press glass_hit3 { emit glass_rim_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
             on scroll glass_hit3 { gl_scroll_to = clamp(gl_scroll_to - wheel * 44, 0, max(0, gl.h - set.h)) }
             on drag glass_hit3 { emit glass_rim_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
@@ -103,7 +104,7 @@ part Glass {
                 PSlider(gsl.x0, sby + 415 * pu, gsl.w, clamp(clamp(glass_refr / 3, 0, 1), 0, 1), glass_hit4.hover, cu, gls_gh, 0)
             }
             group { scale: rs; pivot: floor(spx + 424 * pu + 0.5), floor(sby + 386 * pu + 0.5); text glass_refr_text { at: floor(spx + 424 * pu + 0.5), floor(sby + 386 * pu + 0.5); anchor: right center; size: 20; weight: 600; color: ink; opacity: 100% * (0.35 + 0.65 * glass_bend_k); family: "Space Grotesk" } }
-            zone box glass_hit4 { at: gsl.x0 + gsl.w / 2, sby + 415 * pu; size: gsl.w + 28 * pu, 26 * pu; cursor: pointer; active: (obs < 0.5) and (sby + 415 * pu) - gl.off > sby and (sby + 415 * pu) - gl.off < sby + set.h * pu }
+            zone box glass_hit4 { at: gsl.x0 + gsl.w / 2, sby + 415 * pu; size: gsl.w + 28 * pu, 26 * pu; cursor: pointer; active: (gobs < 0.5) and (sby + 415 * pu) - gl.off > sby and (sby + 415 * pu) - gl.off < sby + set.h * pu }
             on press glass_hit4 { emit glass_refr_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
             on scroll glass_hit4 { gl_scroll_to = clamp(gl_scroll_to - wheel * 44, 0, max(0, gl.h - set.h)) }
             on drag glass_hit4 { emit glass_refr_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
@@ -120,7 +121,7 @@ part Glass {
                 PSlider(gsl.x0, sby + 473 * pu, gsl.w, clamp(clamp(glass_disp / 2.5, 0, 1), 0, 1), glass_hit5.hover, cu, gls_gh, 0)
             }
             group { scale: rs; pivot: floor(spx + 424 * pu + 0.5), floor(sby + 444 * pu + 0.5); text glass_disp_text { at: floor(spx + 424 * pu + 0.5), floor(sby + 444 * pu + 0.5); anchor: right center; size: 20; weight: 600; color: ink; opacity: 100% * (0.35 + 0.65 * glass_bend_k); family: "Space Grotesk" } }
-            zone box glass_hit5 { at: gsl.x0 + gsl.w / 2, sby + 473 * pu; size: gsl.w + 28 * pu, 26 * pu; cursor: pointer; active: (obs < 0.5) and (sby + 473 * pu) - gl.off > sby and (sby + 473 * pu) - gl.off < sby + set.h * pu }
+            zone box glass_hit5 { at: gsl.x0 + gsl.w / 2, sby + 473 * pu; size: gsl.w + 28 * pu, 26 * pu; cursor: pointer; active: (gobs < 0.5) and (sby + 473 * pu) - gl.off > sby and (sby + 473 * pu) - gl.off < sby + set.h * pu }
             on press glass_hit5 { emit glass_disp_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
             on scroll glass_hit5 { gl_scroll_to = clamp(gl_scroll_to - wheel * 44, 0, max(0, gl.h - set.h)) }
             on drag glass_hit5 { emit glass_disp_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
@@ -137,7 +138,7 @@ part Glass {
                 group { scale: rs; pivot: floor(spx + 14 * pu + 0.5), floor(sby + 126 * pu + 0.5); text "Show wallpaper but not live windows. Light GPU load." { at: floor(spx + 14 * pu + 0.5), floor(sby + 126 * pu + 0.5); anchor: left center; size: 14; weight: 600; color: faint; family: "Space Grotesk" } }
                 SettingsSwitch(spx + 424 * pu, sby + 118 * pu, glass_bend_pill, glass_bend_hit.pressed, glass_bend_hit.hover, mint)
             }
-            zone box glass_bend_hit { at: spx + 219 * pu, sby + 118 * pu; size: 430 * pu, 40 * pu; corner: 12 * pu; cursor: pointer; active: (obs < 0.5 and not glass_live) and (sby + 118 * pu) - gl.off > sby and (sby + 118 * pu) - gl.off < sby + set.h * pu }
+            zone box glass_bend_hit { at: spx + 219 * pu, sby + 118 * pu; size: 430 * pu, 40 * pu; corner: 12 * pu; cursor: pointer; active: (gobs < 0.5 and not glass_live) and (sby + 118 * pu) - gl.off > sby and (sby + 118 * pu) - gl.off < sby + set.h * pu }
             on press glass_bend_hit { emit glass_bend_toggle }
             on scroll glass_bend_hit { gl_scroll_to = clamp(gl_scroll_to - wheel * 44, 0, max(0, gl.h - set.h)) }
 
@@ -157,7 +158,7 @@ part Glass {
                 opacity: 100%
                 SettingsSwitch(spx + 424 * pu, sby + 168 * pu, glass_live_pill, glass_live_hit.pressed, glass_live_hit.hover, mint)
             }
-            zone box glass_live_hit { at: spx + 219 * pu, sby + 168 * pu; size: 430 * pu, 40 * pu; corner: 12 * pu; cursor: pointer; active: (obs < 0.5) and (sby + 168 * pu) - gl.off > sby and (sby + 168 * pu) - gl.off < sby + set.h * pu }
+            zone box glass_live_hit { at: spx + 219 * pu, sby + 168 * pu; size: 430 * pu, 40 * pu; corner: 12 * pu; cursor: pointer; active: (gobs < 0.5) and (sby + 168 * pu) - gl.off > sby and (sby + 168 * pu) - gl.off < sby + set.h * pu }
             on press glass_live_hit { emit glass_live_toggle }
             on scroll glass_live_hit { gl_scroll_to = clamp(gl_scroll_to - wheel * 44, 0, max(0, gl.h - set.h)) }
 
@@ -173,7 +174,7 @@ part Glass {
                 PSlider(gsl.x0, sby + 531 * pu, gsl.w, clamp(clamp(glass_clear, 0, 1), 0, 1), glass_hit6.hover, cu, gls_gh, 0)
             }
             group { scale: rs; pivot: floor(spx + 424 * pu + 0.5), floor(sby + 502 * pu + 0.5); text glass_clear_text { at: floor(spx + 424 * pu + 0.5), floor(sby + 502 * pu + 0.5); anchor: right center; size: 20; weight: 600; color: ink; opacity: 100% * (0.35 + 0.65 * glass_bend_k) * (1 - 0.55 * glass_auto_pill); family: "Space Grotesk" } }
-            zone box glass_hit6 { at: gsl.x0 + gsl.w / 2, sby + 531 * pu; size: gsl.w + 28 * pu, 26 * pu; cursor: pointer; active: (obs < 0.5 and glass_bend and not glass_auto) and (sby + 531 * pu) - gl.off > sby and (sby + 531 * pu) - gl.off < sby + set.h * pu }
+            zone box glass_hit6 { at: gsl.x0 + gsl.w / 2, sby + 531 * pu; size: gsl.w + 28 * pu, 26 * pu; cursor: pointer; active: (gobs < 0.5 and glass_bend and not glass_auto) and (sby + 531 * pu) - gl.off > sby and (sby + 531 * pu) - gl.off < sby + set.h * pu }
             on press glass_hit6 { emit glass_clear_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
             on scroll glass_hit6 { gl_scroll_to = clamp(gl_scroll_to - wheel * 44, 0, max(0, gl.h - set.h)) }
             on drag glass_hit6 { emit glass_clear_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
@@ -190,7 +191,7 @@ part Glass {
                 group { scale: rs; pivot: floor(spx + 14 * pu + 0.5), floor(sby + 576 * pu + 0.5); text "Clear over the wallpaper, frosted behind words and windows" { at: floor(spx + 14 * pu + 0.5), floor(sby + 576 * pu + 0.5); anchor: left center; size: 14; weight: 600; color: alert; family: "Space Grotesk" } }
                 SettingsSwitch(spx + 424 * pu, sby + 568 * pu, glass_auto_pill, glass_auto_hit.pressed, glass_auto_hit.hover, mint)
             }
-            zone box glass_auto_hit { at: spx + 219 * pu, sby + 568 * pu; size: 430 * pu, 40 * pu; corner: 12 * pu; cursor: pointer; active: (obs < 0.5 and glass_bend) and (sby + 568 * pu) - gl.off > sby and (sby + 568 * pu) - gl.off < sby + set.h * pu }
+            zone box glass_auto_hit { at: spx + 219 * pu, sby + 568 * pu; size: 430 * pu, 40 * pu; corner: 12 * pu; cursor: pointer; active: (gobs < 0.5 and glass_bend) and (sby + 568 * pu) - gl.off > sby and (sby + 568 * pu) - gl.off < sby + set.h * pu }
             on press glass_auto_hit { emit glass_auto_toggle }
             on scroll glass_auto_hit { gl_scroll_to = clamp(gl_scroll_to - wheel * 44, 0, max(0, gl.h - set.h)) }
 
@@ -206,7 +207,7 @@ part Glass {
                 PSlider(gsl.x0, sby + 643 * pu, gsl.w, clamp(glass_dome, 0, 1), glass_hit7.hover, cu, gls_gh, 0)
             }
             group { scale: rs; pivot: floor(spx + 424 * pu + 0.5), floor(sby + 614 * pu + 0.5); text glass_dome_text { at: floor(spx + 424 * pu + 0.5), floor(sby + 614 * pu + 0.5); anchor: right center; size: 20; weight: 600; color: ink; opacity: 100%; family: "Space Grotesk" } }
-            zone box glass_hit7 { at: gsl.x0 + gsl.w / 2, sby + 643 * pu; size: gsl.w + 28 * pu, 26 * pu; cursor: pointer; active: (obs < 0.5) and (sby + 643 * pu) - gl.off > sby and (sby + 643 * pu) - gl.off < sby + set.h * pu }
+            zone box glass_hit7 { at: gsl.x0 + gsl.w / 2, sby + 643 * pu; size: gsl.w + 28 * pu, 26 * pu; cursor: pointer; active: (gobs < 0.5) and (sby + 643 * pu) - gl.off > sby and (sby + 643 * pu) - gl.off < sby + set.h * pu }
             on press glass_hit7 { emit glass_dome_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
             on scroll glass_hit7 { gl_scroll_to = clamp(gl_scroll_to - wheel * 44, 0, max(0, gl.h - set.h)) }
             on drag glass_hit7 { emit glass_dome_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
@@ -224,7 +225,7 @@ part Glass {
                 PSlider(gsl.x0, sby + 707 * pu, gsl.w, clamp(clamp(glass_milk / 1, 0, 1), 0, 1), glass_hit8.hover, cu, gls_gh, 0)
             }
             group { scale: rs; pivot: floor(spx + 424 * pu + 0.5), floor(sby + 678 * pu + 0.5); text glass_milk_text { at: floor(spx + 424 * pu + 0.5), floor(sby + 678 * pu + 0.5); anchor: right center; size: 20; weight: 600; color: ink; opacity: 100%; family: "Space Grotesk" } }
-            zone box glass_hit8 { at: gsl.x0 + gsl.w / 2, sby + 707 * pu; size: gsl.w + 28 * pu, 26 * pu; cursor: pointer; active: (obs < 0.5) and (sby + 707 * pu) - gl.off > sby and (sby + 707 * pu) - gl.off < sby + set.h * pu }
+            zone box glass_hit8 { at: gsl.x0 + gsl.w / 2, sby + 707 * pu; size: gsl.w + 28 * pu, 26 * pu; cursor: pointer; active: (gobs < 0.5) and (sby + 707 * pu) - gl.off > sby and (sby + 707 * pu) - gl.off < sby + set.h * pu }
             on press glass_hit8 { emit glass_milk_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
             on scroll glass_hit8 { gl_scroll_to = clamp(gl_scroll_to - wheel * 44, 0, max(0, gl.h - set.h)) }
             on drag glass_hit8 { emit glass_milk_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
@@ -241,7 +242,7 @@ part Glass {
                 PSlider(gsl.x0, sby + 907 * pu, gsl.w, clamp(if(lens_interval_ms <= 16, 0, lens_interval_ms / 1000), 0, 1), glass_hit9.hover, cu, gls_gh, 0)
             }
             group { scale: rs; pivot: floor(spx + 424 * pu + 0.5), floor(sby + 878 * pu + 0.5); text glass_cap_text { at: floor(spx + 424 * pu + 0.5), floor(sby + 878 * pu + 0.5); anchor: right center; size: 20; weight: 600; color: ink; opacity: 100%; family: "Space Grotesk" } }
-            zone box glass_hit9 { at: gsl.x0 + gsl.w / 2, sby + 907 * pu; size: gsl.w + 28 * pu, 26 * pu; cursor: pointer; active: (obs < 0.5) and (sby + 907 * pu) - gl.off > sby and (sby + 907 * pu) - gl.off < sby + set.h * pu }
+            zone box glass_hit9 { at: gsl.x0 + gsl.w / 2, sby + 907 * pu; size: gsl.w + 28 * pu, 26 * pu; cursor: pointer; active: (gobs < 0.5) and (sby + 907 * pu) - gl.off > sby and (sby + 907 * pu) - gl.off < sby + set.h * pu }
             on press glass_hit9 { emit glass_cap_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
             on scroll glass_hit9 { gl_scroll_to = clamp(gl_scroll_to - wheel * 44, 0, max(0, gl.h - set.h)) }
             on drag glass_hit9 { emit glass_cap_set(clamp(((pointer.x - tx.pnl) - gsl.x0) / gsl.w, 0, 1)) }
@@ -279,7 +280,7 @@ part Glass {
                     box { at: gbx, gby; size: 66 * pu, 56 * pu; corner: 12 * pu; stroke: 1.5 * pu; color: mint; opacity: gblit * 100% }
                     box { at: gbx, gby - 10 * pu; size: 30 * pu, 18 * pu; corner: 3 * pu; stroke: 1.2 * pu; color: mix(ink, mint, gblit) }
                     group { scale: rs; pivot: floor(gbx + 0.5), floor(gby + 14 * pu + 0.5); text bar_m.$i.name { at: floor(gbx + 0.5), floor(gby + 14 * pu + 0.5); anchor: center; align: center; size: 15.5; weight: 700; width: (64 * pu) / rs; lines: 1; color: mix(ink, mint, gblit); family: "Space Grotesk" } }
-                    zone box glass_bm_hit.$i { at: gbx, gby; size: 66 * pu, 56 * pu; corner: 12 * pu; cursor: pointer; active: (obs < 0.5 and glass_bend and bar_m.$i.on) and gby - gl.off > sby and gby - gl.off < sby + set.h * pu }
+                    zone box glass_bm_hit.$i { at: gbx, gby; size: 66 * pu, 56 * pu; corner: 12 * pu; cursor: pointer; active: (gobs < 0.5 and glass_bend and bar_m.$i.on) and gby - gl.off > sby and gby - gl.off < sby + set.h * pu }
                     on press glass_bm_hit.$i { emit glass_bend_mon(i) }
                     on scroll glass_bm_hit.$i { gl_scroll_to = clamp(gl_scroll_to - wheel * 44, 0, max(0, gl.h - set.h)) }
                 }

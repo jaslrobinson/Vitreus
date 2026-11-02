@@ -436,6 +436,11 @@ scene Vitreus {
     fact glass_obs = false
     prop obs = 0 ~calm
     follow obs = if(glass_obs or cas or uwu or milk or proxy_on or paper_on or doodle_on or game_on, 1, 0)      // (Game Mode: no glass while it is on, see game_fx.glass)
+    //  `gobs` is the Glass switch ALONE, without the looks that draw a solid plate of their own (Paper, Proxy, Cassette, uwu, Milk, Doodle, Game Mode).
+    //  The Glass page greys and locks its rows by this one, not by `obs`: on those looks the glass is not drawn, but what the glass is
+    //  made of is still the user's to set, and `obs` pinned at 1 made the whole page unreachable until the look was changed.
+    prop gobs = 0 ~calm
+    follow gobs = if(glass_obs, 1, 0)
     //  The Cassette theme (Settings > Theme): the same flat body as obsidian, but in the palette's own plastic (`obsidian` below stops being darkened), with a hard
     //  edge, a lit lip, a seam, a four-colour stripe across each drawer's head and a hard shadow. `cas_k` travels between glass and plastic; the drawers' liquid
     //  (necks, drips, the jelly) is switched off with it and their corners are cut square (`rc`, `bk`).
