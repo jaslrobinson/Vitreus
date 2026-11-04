@@ -9,7 +9,7 @@ corner_rounding = 3
 
 [palette]
 ink    = "#22202e"
-faint  = "#6b6577"
+faint  = "#4a4555"
 mint   = "#e0457b"
 mintlo = "#c22f63"
 minthi = "#f7a8c4"
