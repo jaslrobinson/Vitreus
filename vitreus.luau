@@ -8962,3 +8962,17 @@ do
     on("fact:desk_open", function(v) if v == true then chime() end end)   -- the Desk is not one of the panels: it has its own fact
     on("fact:ax_chime", function() chime() end)   -- an add-on's drawer: the logic opens it, so the scene counts its openings
 end
+
+-- The ambient animations (Settings > Theme > Animations): the panels' pencil redraws, breathing toggles and the like, which keep the scene's
+-- clock running (`need_clock`) for as long as a settings / controls / launcher panel sits open. Off, those panels rest at rest.
+do
+    local anims_on, file = true, "motion.json"
+    local ok, saved = pcall(sys.ask, "files.read", file, "json")
+    if ok and type(saved) == "table" and type(saved.anims) == "boolean" then anims_on = saved.anims end
+    fact.anims_on = anims_on
+    on("anims_toggle", function()
+        anims_on = not anims_on
+        fact.anims_on = anims_on
+        pcall(sys.call, "files.write", file, { anims = anims_on })
+    end)
+end

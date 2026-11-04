@@ -6,7 +6,7 @@ part Theme {
             show: set_pgp > 0.01
             opacity: set_pgp
             //  The page scrolls inside the panel, as the Lock screen page does (the panel keeps one height): the wheel, the thumb at the side, and More.
-            let th.h = 452 + 88 * th_ex                 // the page: its cards, to the bottom of the last (Pin wallpaper)
+            let th.h = 496 + 88 * th_ex                 // the page: its cards, to the bottom of the last (Animations)
             let th.sc = clamp(th_scroll, 0, max(0, th.h - set.h))
             let th.off = floor(th.sc * pu + 0.5)        // whole pixels: text that is shifted by a fraction of one is resampled, and looks soft
             clip box { at: spx + 224 * pu, sby + set.h / 2 * pu; size: 456 * pu, set.h * pu }
@@ -128,6 +128,14 @@ part Theme {
             SettingsSwitch(spx + 424 * pu, sby + (416 + 88 * th_ex) * pu, snd_pill, snd_hit.pressed, snd_hit.hover, mint)
             zone box snd_hit { at: spx + 405 * pu, sby + (416 + 88 * th_ex) * pu; size: 46 * pu, 30 * pu; cursor: pointer; active: sby + (416 + 88 * th_ex) * pu - th.off > sby and sby + (416 + 88 * th_ex) * pu - th.off < sby + set.h * pu; label: "Panel sound" }
             on press snd_hit { emit snd_toggle }
+            //  Animations: the switch for the panels' ambient motion (the pencil redraws, the breathing toggles). Off, the scene rests while a panel sits open.
+            body { color: mix(mix(obsidian, ink, (6%) * 1.6), dd_cream, dd_k); opacity: obs; border: 3.4 * pu * dd_k, ink; shadow: 0, 2 * pu, 7 * pu, 40% * (1 - dd_k), #000000; show: obs > 0.004; box { at: spx + 219 * pu, sby + (456 + 88 * th_ex) * pu; size: 438 * pu, 40 * pu; corner: 14 * pu } }
+            box { at: spx + 219 * pu, sby + (456 + 88 * th_ex) * pu; size: 438 * pu, 40 * pu; corner: 14 * pu; color: ink; opacity: (6%) * (1 - obs) }
+            group { scale: rs; pivot: floor(spx + 14 * pu + 0.5), floor(sby + (456 + 88 * th_ex) * pu + 0.5); text "Animations" { at: floor(spx + 14 * pu + 0.5), floor(sby + (456 + 88 * th_ex) * pu + 0.5); anchor: left center; size: 16.5; weight: 700; color: ink; family: "Space Grotesk" } }
+            group { scale: rs; pivot: floor(spx + 350 * pu + 0.5), floor(sby + (456 + 88 * th_ex) * pu + 0.5); text "Motion in the open panels" { at: floor(spx + 350 * pu + 0.5), floor(sby + (456 + 88 * th_ex) * pu + 0.5); anchor: right center; size: 14.5; color: faint; family: "Space Grotesk" } }
+            SettingsSwitch(spx + 424 * pu, sby + (456 + 88 * th_ex) * pu, anims_pill, anims_hit.pressed, anims_hit.hover, mint)
+            zone box anims_hit { at: spx + 405 * pu, sby + (456 + 88 * th_ex) * pu; size: 46 * pu, 30 * pu; cursor: pointer; active: sby + (456 + 88 * th_ex) * pu - th.off > sby and sby + (456 + 88 * th_ex) * pu - th.off < sby + set.h * pu; label: "Animations" }
+            on press anims_hit { emit anims_toggle }
             //  Two cards side by side, each half the row: Pin wallpaper and Pin widgets, both off by default (a theme leaves the wallpaper and the widgets as
             //  they are). Pin wallpaper (logic/theme_wallpaper.luau): a wallpaper of the gallery that comes with the theme in use; the switch pins the one up
             //  now, Change picks another from the gallery, over the page. Pin widgets (logic/theme_widgets.luau): the desktop widgets that are on, and where,

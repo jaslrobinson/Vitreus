@@ -954,6 +954,8 @@ scene Vitreus {
     event theme_pick ->
     fact snd_on = true               // Settings > Theme: the little sound when a panel opens
     event snd_toggle ->
+    fact anims_on = true             // Settings > Theme > Animations: the panels' ambient motion while they sit open (off, they rest)
+    event anims_toggle ->
     //  Settings > Theme > Pin wallpaper (logic/theme_wallpaper.luau): a wallpaper of the gallery that comes with the theme in use, put up whenever
     //  that theme is chosen. The row's thumbnail and line, and the picker over the page (a page of the gallery's thumbnails, the pinned one ringed).
     fact tpw_on = false
@@ -1752,6 +1754,7 @@ scene Vitreus {
     prop disp_auto_pill = 0 ~pop
     prop gpu_pill = 0 ~pop
     prop snd_pill = 0 ~pop
+    prop anims_pill = 0 ~pop
     prop tpw_pill = 0 ~pop           // Settings > Theme > Pin wallpaper's switch
     prop twg_pill = 0 ~pop           // (and Pin widgets')
     prop disp_dd = 0 ~calm            // the resolution dropdown, 0 shut .. 1 open
@@ -2602,6 +2605,7 @@ scene Vitreus {
     follow disp_auto_pill = if(disp_auto, 1, 0)
     follow gpu_pill = if(gpu_dis, 1, 0)
     follow snd_pill = if(snd_on, 1, 0)
+    follow anims_pill = if(anims_on, 1, 0)
     follow tpw_pill = if(tpw_on, 1, 0)
     follow twg_pill = if(twg_on, 1, 0)
     follow disp_dd = if(disp_res_open, 1, 0)
@@ -7618,7 +7622,7 @@ scene Vitreus {
         on press desk_open_z { panel_scr = screen.index; desk_tab = if(desk_open, desk_tab, desk_start); desk_open = not desk_open }
     }
     //  The clock runs while something needs it. It is here, after the bar's zones, because it reads their hover: the bar's icons only boil under the pointer.
-    let need_clock = (fr_wv > 0 and fm > 0.5) or (cy_on > 0.01) or bar_hit.hover > 0.01 or adk_hot > 0.5 or wsh.1.$screen > 0.01 or wsh.2.$screen > 0.01 or wsh.3.$screen > 0.01 or wsh.4.$screen > 0.01 or wsh.5.$screen > 0.01 or wsh.6.$screen > 0.01 or wsh.7.$screen > 0.01 or wsh.8.$screen > 0.01 or wsh.9.$screen > 0.01 or wsh.10.$screen > 0.01 or set_hit.hover > 0.01 or sr_hit.hover > 0.01 or ctl_hit.hover > 0.01 or ov_btn.hover > 0.01 or bp.prev.hover > 0.01 or bp.play.hover > 0.01 or bp.next.hover > 0.01 or vm_prev.hover > 0.01 or vm_play.hover > 0.01 or vm_next.hover > 0.01 or ds > 0.01 or dl > 0.01 or dk > 0.01 or hm_hot > 0.5 or ((wifi_scanning or bt_scanning or bt_working or caf_on or pw_d0 or pw_d1 or pw_d2 or pw_d3 or pw_d4) and dk > 0.01) or (do > 0.01 and (osd_kind == vol or osd_kind == note or nt_urgent)) or (set_pgd > 0.01 and disp.h > set.h) or time - pw_b0 < 1.5 or time - pw_b1 < 1.5 or time - pw_b2 < 1.5 or time - pw_b3 < 1.5 or time - pw_b4 < 1.5 or rec_on or (dsh_rise > 0.01 and (dsh_rise < 0.995 or dsh_under > 0.002 or media.playing or dsh_hv > 0.5)) or (mf.vis > 0.01 and (media.playing or mf_hv > 0.01))
+    let need_clock = (fr_wv > 0 and fm > 0.5) or (cy_on > 0.01) or bar_hit.hover > 0.01 or adk_hot > 0.5 or wsh.1.$screen > 0.01 or wsh.2.$screen > 0.01 or wsh.3.$screen > 0.01 or wsh.4.$screen > 0.01 or wsh.5.$screen > 0.01 or wsh.6.$screen > 0.01 or wsh.7.$screen > 0.01 or wsh.8.$screen > 0.01 or wsh.9.$screen > 0.01 or wsh.10.$screen > 0.01 or set_hit.hover > 0.01 or sr_hit.hover > 0.01 or ctl_hit.hover > 0.01 or ov_btn.hover > 0.01 or bp.prev.hover > 0.01 or bp.play.hover > 0.01 or bp.next.hover > 0.01 or vm_prev.hover > 0.01 or vm_play.hover > 0.01 or vm_next.hover > 0.01 or ((ds > 0.01 or dl > 0.01 or dk > 0.01) and anims_on) or hm_hot > 0.5 or ((wifi_scanning or bt_scanning or bt_working or caf_on or pw_d0 or pw_d1 or pw_d2 or pw_d3 or pw_d4) and dk > 0.01) or (do > 0.01 and (osd_kind == vol or osd_kind == note or nt_urgent)) or (set_pgd > 0.01 and disp.h > set.h and anims_on) or time - pw_b0 < 1.5 or time - pw_b1 < 1.5 or time - pw_b2 < 1.5 or time - pw_b3 < 1.5 or time - pw_b4 < 1.5 or rec_on or (dsh_rise > 0.01 and (dsh_rise < 0.995 or dsh_under > 0.002 or media.playing or dsh_hv > 0.5)) or (mf.vis > 0.01 and (media.playing or mf_hv > 0.01))
     spin time by if(need_clock, 1, 0)
 
 
