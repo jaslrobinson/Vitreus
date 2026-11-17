@@ -144,6 +144,17 @@ while :; do
     if [ "$name" = vitreus ] && [ -f "$data/gpu.json" ]; then
         if grep -q '"discrete"[[:space:]]*:[[:space:]]*true' "$data/gpu.json" 2> /dev/null; then gpu_set="PLEAMAR_GPU=high"; else gpu_unset="-u PLEAMAR_GPU"; fi
     fi
+    # Every scene calls vkEnumeratePhysicalDevices at startup, which touches the discrete card and runtime-resumes it out of
+    # D3cold. Each resume costs a VRAM save-out on the suspend 22 s later, and that host _memdescAllocInternal allocation is what
+    # logs NV_ERR_NO_MEMORY — the Nov 13 wedge's precursor. Measured 2026-11-15: unpinned, the loader opens libGLX_nvidia.so.0 and
+    # the card goes active (+1 "Enabling HDA controller"); pinned to the Intel ICD it stays suspended (+0). The shell paints on the
+    # iGPU anyway ("Intel(R) Graphics (ARL)"), so hide the NVIDIA ICD from it.
+    # NOT hidden when the shell was asked to draw on the discrete card (Settings > Display > Graphics card -> gpu.json), which needs
+    # that ICD to work at all. Escape hatch: VITREUS_VK_PIN=0.
+    vk_set=""
+    if [ -z "${VK_DRIVER_FILES:-}" ] && [ "${VITREUS_VK_PIN:-1}" = 1 ] && [ -z "$gpu_set" ] && [ -r /usr/share/vulkan/icd.d/intel_icd.json ]; then
+        vk_set="VK_DRIVER_FILES=/usr/share/vulkan/icd.d/intel_icd.json"
+    fi
     # The bar's copies go to its monitors by name (`--screen`, copy K to the K-th): the list the shell leaves in bar-screens (logic/bar_monitors.luau).
     # Without it pleamar hands them out in the order the compositor announced the monitors, and one switched off and on again is announced last:
     # the bar's copy landed on another monitor, where it was closed, and the bar was gone until the next login (issue #67).
@@ -156,11 +167,11 @@ while :; do
     # In the background, so the hang watch can run beside it; `wait` gives its exit code as running it in the foreground did.
     if [ -n "$fonts" ]; then
         # shellcheck disable=SC2086
-        env $gpu_unset $gpu_set FONTCONFIG_FILE="$fonts" pleamar --scene "$P" --no-hud "$@" >> "$L" 2>&1 9>&- &
+        env $gpu_unset $gpu_set $vk_set FONTCONFIG_FILE="$fonts" pleamar --scene "$P" --no-hud "$@" >> "$L" 2>&1 9>&- &
     else
         # Not the font setup this keeper itself was started under (a theme change since): that one is no longer the shell's typeface.
         # shellcheck disable=SC2086
-        env $gpu_unset -u FONTCONFIG_FILE $gpu_set pleamar --scene "$P" --no-hud "$@" >> "$L" 2>&1 9>&- &
+        env $gpu_unset -u FONTCONFIG_FILE $gpu_set $vk_set pleamar --scene "$P" --no-hud "$@" >> "$L" 2>&1 9>&- &
     fi
     spid=$!
     watch_hang "$spid" "$logsize" 9>&- < /dev/null &
