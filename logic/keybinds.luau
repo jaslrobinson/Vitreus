@@ -356,10 +356,14 @@ return function()
         if not r then return end
         K.sel, K.mask, K.key = i, r.mask, r.key
         fact.kb_sel = w      -- the row on screen, not its place in the whole list (the Hyprland list scrolls)
-        listen(true)          -- it listens from here on: the next shortcut pressed is the new one
+        -- It listens from here on: the next shortcut pressed is the new one. Not on a row whose key the page cannot record (a mouse
+        -- button, a media key, a digit: pages/keybinds_keys.plm has no rule for them), where a stray press would replace that key with
+        -- a letter; its modifiers still change, and Save writes the key as the file spells it.
+        local typeable = KEYIDX[tostring(r.key):lower()] ~= nil
+        listen(typeable)
         fact.kb_mod = r.mask
         text.kb_name = r.name
-        text.kb_msg = ""
+        text.kb_msg = typeable and "" or "Only its modifiers can be changed here"
         pick_text()
         dirty()
     end)
@@ -398,6 +402,9 @@ return function()
     -- reports a config error, the copy is put back and Hyprland reloaded again, so a bad write never leaves the desktop without its keys.
     -- The line is read again before it is written: if it no longer holds what was listed, the list is read again instead.
     local function hypr_write(r, script, msg_ok)
+        -- The key is settled, and the `hyprctl reload` below makes Hyprland forget the `vitreus_keys` submap anyway: stop listening
+        -- first, or `K.grab` stays true with no submap on and the next row chosen is never heard (its shortcut runs the bind instead).
+        listen(false)
         local f = hfile(r.file)
         local bak = f .. ".vitreus-kb.bak"
         local function finish(msg)
