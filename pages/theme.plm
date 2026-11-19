@@ -146,10 +146,12 @@ part Theme {
             box { at: spx + 219 * pw, sby + (512 + 88 * th_ex) * pu; size: 438 * pw, 54 * pu; corner: 14 * pu; color: obsidian; opacity: card_fill * (1 - obs) }      // the card's deeper backing (see `card_fill`)
             box { at: spx + 219 * pw, sby + (512 + 88 * th_ex) * pu; size: 438 * pw, 54 * pu; corner: 14 * pu; color: ink; opacity: (6%) * (1 - obs) }
             box { at: spx + 219 * pw, sby + (512 + 88 * th_ex) * pu; size: 438 * pw, 54 * pu; corner: 14 * pu; stroke: 1 * pu; color: ink; opacity: hair * (1 - dd_k) }
-            group { scale: rs; pivot: floor(spx + 14 * pw + 0.5), floor(sby + (512 + 88 * th_ex) * pu + 0.5); text "Animations" { at: floor(spx + 14 * pw + 0.5), floor(sby + (512 + 88 * th_ex) * pu + 0.5); anchor: left center; size: 16.5; weight: 700; color: ink; family: "Space Grotesk" } }
+            measure ldr_theanim
+            group { scale: rs; pivot: floor(spx + 14 * pw + 0.5), floor(sby + (512 + 88 * th_ex) * pu + 0.5); text "Animations" { at: floor(spx + 14 * pw + 0.5), floor(sby + (512 + 88 * th_ex) * pu + 0.5); measure: ldr_theanim; anchor: left center; size: 16.5; weight: 700; color: ink; family: "Space Grotesk" } }
             group { scale: rs; pivot: floor(spx + 350 * pw + 0.5), floor(sby + (512 + 88 * th_ex) * pu + 0.5); text "Motion in the open panels" { at: floor(spx + 350 * pw + 0.5), floor(sby + (512 + 88 * th_ex) * pu + 0.5); anchor: right center; size: 14.5; color: faint; family: "Space Grotesk" } }
             SettingsSwitch(spx + 424 * pw, sby + (512 + 88 * th_ex) * pu, anims_pill, anims_hit.pressed, anims_hit.hover, mint)
-            zone box anims_hit { at: spx + 424 * pw - 19 * pu, sby + (512 + 88 * th_ex) * pu; size: 46 * pu, 30 * pu; cursor: pointer; active: sby + (512 + 88 * th_ex) * pu - th.off > sby and sby + (512 + 88 * th_ex) * pu - th.off < sby + set.h * pu; label: "Animations" }
+            PLeader(spx + 14 * pw + ldr_theanim.width * rs + 8 * pu, spx + 424 * pw - 40 * cu, sby + (512 + 88 * th_ex) * pu, anims_hit.hover, pu)
+            zone box anims_hit { at: spx + 424 * pw - 19 * cu, sby + (512 + 88 * th_ex) * pu; size: 44 * cu, 28 * cu; cursor: pointer; active: sby + (512 + 88 * th_ex) * pu - th.off > sby and sby + (512 + 88 * th_ex) * pu - th.off < sby + set.h * pu; label: "Animations" }
             on press anims_hit { emit anims_toggle }
             //  Two cards side by side, each half the row: Pin wallpaper and Pin widgets, both off by default (a theme leaves the wallpaper and the widgets as
             //  they are). Pin wallpaper (logic/theme_wallpaper.luau): a wallpaper of the gallery that comes with the theme in use; the switch pins the one up
